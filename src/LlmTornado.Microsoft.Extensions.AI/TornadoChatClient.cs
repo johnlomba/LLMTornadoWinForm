@@ -140,6 +140,13 @@ public sealed class TornadoChatClient : IChatClient
                 continue;
             }
 
+            // Skip internal stream chunks (e.g., AppendAssistantMessage, FinishData) that are used
+            // internally by LlmTornado for conversation management but should not be exposed to IChatClient consumers
+            if (chunk.StreamInternalKind is not null)
+            {
+                continue;
+            }
+
             ChatChoice? choice = chunk.Choices?.FirstOrDefault();
             ChatMessage? delta = choice?.Delta;
             
