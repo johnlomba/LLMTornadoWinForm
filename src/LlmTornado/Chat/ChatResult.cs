@@ -286,9 +286,9 @@ public class ChatChoice
 	/// </summary>
 	/// <returns>The content of the message in this response, not including <see cref="ChatMessageRoles" />.</returns>
 	public override string? ToString()
-    {
-        return Message?.Content;
-    }
+	{
+		return Message?.Parts?.Count > 0 ? string.Join("\n", Message.Parts.Select(x => x.ToString())) : Message?.Content;
+	}
 }
 
 /// <summary>

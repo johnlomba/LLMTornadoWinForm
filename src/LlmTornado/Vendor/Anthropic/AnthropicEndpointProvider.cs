@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using LlmTornado.Batch;
 using LlmTornado.Chat;
 using LlmTornado.Chat.Models;
 using LlmTornado.Chat.Vendors.Anthropic;
@@ -316,6 +317,7 @@ public class AnthropicEndpointProvider : BaseEndpointProvider, IEndpointProvider
             CapabilityEndpoints.Files => "files",
             CapabilityEndpoints.Skills => "skills",
             CapabilityEndpoints.Tokenize => "messages/count_tokens",
+            CapabilityEndpoints.Batch => "messages/batches",
             _ => throw new Exception($"Anthropic doesn't support endpoint {endpoint}")
         };
     }
@@ -821,6 +823,8 @@ public class AnthropicEndpointProvider : BaseEndpointProvider, IEndpointProvider
                 (T?)(dynamic)ChatResult.Deserialize(LLmProviders.Anthropic, jsonData, postData, requestObject),
             _ when type == typeof(TokenizeResult) => 
                 (T?)(dynamic)TokenizeResult.Deserialize(LLmProviders.Anthropic, jsonData, postData),
+            _ when type == typeof(BatchResult) => 
+                (T?)(dynamic)BatchResult.Deserialize(LLmProviders.Anthropic, jsonData),
             _ => JsonConvert.DeserializeObject<T>(jsonData)
         };
     }

@@ -45,7 +45,19 @@ public enum RetrievedFilePurpose
     ///     Agent file for ZAI
     /// </summary>
     [EnumMember(Value = "agent")]
-    Agent
+    Agent,
+    
+    /// <summary>
+    ///     Batch API input/output file.
+    /// </summary>
+    [EnumMember(Value = "batch")]
+    Batch,
+    
+    /// <summary>
+    ///     Batch API output file.
+    /// </summary>
+    [EnumMember(Value = "batch_output")]
+    BatchOutput
 }
 
 /// <summary>
@@ -64,6 +76,7 @@ public static class RetrievedFilePurposeExtensions
         {
             FilePurpose.Assistants => RetrievedFilePurpose.Assistants,
             FilePurpose.Agent => RetrievedFilePurpose.Agent,
+            FilePurpose.Batch => RetrievedFilePurpose.Batch,
             _ => RetrievedFilePurpose.Finetune
         };
     }

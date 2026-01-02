@@ -5,7 +5,6 @@ using System.Text;
 using LlmTornado.ChatFunctions;
 using LlmTornado.Code;
 using LlmTornado.Responses;
-using Microsoft.VisualBasic;
 using Newtonsoft.Json;
 
 namespace LlmTornado.Chat;

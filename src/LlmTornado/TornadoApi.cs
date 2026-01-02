@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using LlmTornado.Assistants;
 using LlmTornado.Audio;
+using LlmTornado.Batch;
 using LlmTornado.Caching;
 using LlmTornado.Chat;
 using LlmTornado.Chat.Models;
@@ -61,6 +62,7 @@ public class TornadoApi
     private readonly Lazy<SkillsEndpoint> skills;
     private readonly Lazy<TokenizeEndpoint> tokenize;
     private readonly Lazy<VideoGenerationEndpoint> videos;
+    private readonly Lazy<BatchEndpoint> batch;
 
     /// <summary>
     ///     If true, the API will throw exceptions for non-200 responses.
@@ -100,6 +102,7 @@ public class TornadoApi
         skills = new Lazy<SkillsEndpoint>(() => new SkillsEndpoint(this), LazyThreadSafetyMode.ExecutionAndPublication);
         tokenize = new Lazy<TokenizeEndpoint>(() => new TokenizeEndpoint(this), LazyThreadSafetyMode.ExecutionAndPublication);
         videos = new Lazy<VideoGenerationEndpoint>(() => new VideoGenerationEndpoint(this), LazyThreadSafetyMode.ExecutionAndPublication);
+        batch = new Lazy<BatchEndpoint>(() => new BatchEndpoint(this), LazyThreadSafetyMode.ExecutionAndPublication);
     }
 
     /// <summary>
@@ -510,4 +513,9 @@ public class TornadoApi
     ///     video.
     /// </summary>
     public VideoGenerationEndpoint Videos => videos.Value;
+    
+    /// <summary>
+    ///     The Batch API allows you to create asynchronous jobs to process multiple requests at once.
+    /// </summary>
+    public BatchEndpoint Batch => batch.Value;
 }

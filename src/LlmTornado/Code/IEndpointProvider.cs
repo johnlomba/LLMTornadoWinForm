@@ -348,7 +348,37 @@ public enum RequestActionTypes
     /// <summary>
     /// Search a vector store for relevant chunks based on a query and file attributes filter.
     /// </summary>
-    VectorStoreSearch
+    VectorStoreSearch,
+    
+    /// <summary>
+    /// Creates a batch of requests.
+    /// </summary>
+    BatchCreate,
+    
+    /// <summary>
+    /// Retrieves a batch.
+    /// </summary>
+    BatchGet,
+    
+    /// <summary>
+    /// Lists batches.
+    /// </summary>
+    BatchList,
+    
+    /// <summary>
+    /// Cancels a batch.
+    /// </summary>
+    BatchCancel,
+    
+    /// <summary>
+    /// Deletes a batch.
+    /// </summary>
+    BatchDelete,
+    
+    /// <summary>
+    /// Gets results of a batch.
+    /// </summary>
+    BatchGetResults
 }
 
 /// <summary>

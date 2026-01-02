@@ -9,8 +9,8 @@ _Empty field means the feature is unsupported by the provider._
 
 | Provider | Chat | Models | Embeddings | Files | Images | Audio | Uploads | Moderation | Responses | Videos | Tokenize | FIM | Fine-tuning | Batch |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **OpenAI** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | | | ✅ | ❌ |
-| **Anthropic** | ✅ | ✅ | | ✅ | | | | | | | ✅ | | | ❌ |
+| **OpenAI** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | | | ✅ | ✅ |
+| **Anthropic** | ✅ | ✅ | | ✅ | | | | | | | ✅ | | | ✅ |
 | **Google** | ✅ | ✅ | ✅ | ✅ | ✅ | | | | | ✅ | ✅ | | ❌ | ❌ |
 | **Cohere** | ✅ | ✅ | ✅ | | | | | | | | ✅ | | | |
 | **DeepSeek** | ✅ | ✅ | | | | | | | | | | ❌ | | |

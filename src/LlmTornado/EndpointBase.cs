@@ -733,6 +733,11 @@ public abstract class EndpointBase
     {
         return HttpRequestStream(provider, endpoint, url, null, HttpVerbs.Post, postData, model, requestObj, ct);
     }
+    
+    internal Task<StreamResponse?> HttpGetStream(IEndpointProvider provider, CapabilityEndpoints endpoint, string? url = null, Dictionary<string, object>? queryParams = null, IModel? model = null, object? requestObj = null, CancellationToken ct = default)
+    {
+        return HttpRequestStream(provider, endpoint, url, queryParams, HttpVerbs.Get, null, model, requestObj, ct);
+    }
 
     /// <summary>
     ///     Sends an HTTP Delete request and does initial parsing

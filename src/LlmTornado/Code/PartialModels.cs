@@ -1732,7 +1732,12 @@ public enum CapabilityEndpoints
     /// <summary>
     /// Videos endpoint.
     /// </summary>
-    Videos
+    Videos,
+    
+    /// <summary>
+    /// Batch endpoint.
+    /// </summary>
+    Batch
 }
 
 /// <summary>
