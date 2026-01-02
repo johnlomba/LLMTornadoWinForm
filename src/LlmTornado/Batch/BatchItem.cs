@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace LlmTornado.Batch;
 
@@ -46,10 +47,40 @@ public class BatchItem
     internal BatchStatus? ProcessingStatusInternal { get; set; }
     
     /// <summary>
+    /// State set by Google/Gemini provider (internal, mapped to StatusInternal).
+    /// </summary>
+    [JsonIgnore]
+    internal BatchStatus? StateInternal { get; set; }
+    
+    /// <summary>
     /// Processing status of the batch.
     /// </summary>
     [JsonIgnore]
-    public BatchStatus Status => StatusInternal ?? ProcessingStatusInternal ?? BatchStatus.Unknown;
+    public BatchStatus Status => StatusInternal ?? ProcessingStatusInternal ?? StateInternal ?? BatchStatus.Unknown;
+    
+    /// <summary>
+    /// Full batch name/path used by Google/Gemini (e.g., "batches/123456").
+    /// </summary>
+    [JsonIgnore]
+    internal string? NameInternal { get; set; }
+    
+    /// <summary>
+    /// Display name set by the user (Google/Gemini).
+    /// </summary>
+    [JsonIgnore]
+    internal string? DisplayNameInternal { get; set; }
+    
+    /// <summary>
+    /// Display name of the batch (used by Google/Gemini).
+    /// </summary>
+    [JsonIgnore]
+    public string? DisplayName => DisplayNameInternal;
+    
+    /// <summary>
+    /// Inlined responses from Google/Gemini (internal use for result streaming).
+    /// </summary>
+    [JsonIgnore]
+    internal JArray? GoogleInlinedResponses { get; set; }
     
     /// <summary>
     /// Errors that occurred during batch processing.

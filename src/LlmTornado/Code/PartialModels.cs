@@ -630,6 +630,12 @@ public enum ChatRequestServiceTiers
     /// </summary>
     [EnumMember(Value = "performance")]
     Performance,
+    
+    /// <summary>
+    ///  Only use standard tier capacity, useful if you don't want to use your Priority Tier capacity, supported only by Anthropic.
+    /// </summary>
+    [EnumMember(Value = "standard_only")]
+    StandardOnly
 }
 
 /// <summary>

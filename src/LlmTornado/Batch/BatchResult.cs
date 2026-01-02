@@ -1,4 +1,5 @@
 using LlmTornado.Batch.Vendors.Anthropic;
+using LlmTornado.Batch.Vendors.Google;
 using LlmTornado.Batch.Vendors.OpenAi;
 using LlmTornado.Chat;
 using LlmTornado.Code;
@@ -84,6 +85,7 @@ public class BatchResult
         return provider switch
         {
             LLmProviders.Anthropic => VendorAnthropicBatchResult.Deserialize(jsonData),
+            LLmProviders.Google => VendorGoogleBatchResult.Deserialize(jsonData),
             _ => VendorOpenAiBatchResult.Deserialize(jsonData)
         };
     }

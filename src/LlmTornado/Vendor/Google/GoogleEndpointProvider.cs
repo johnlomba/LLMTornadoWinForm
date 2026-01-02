@@ -6,6 +6,8 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Web;
+using LlmTornado.Batch;
+using LlmTornado.Batch.Vendors.Google;
 using LlmTornado.Caching;
 using LlmTornado.Chat;
 using LlmTornado.Chat.Vendors.Cohere;
@@ -58,6 +60,7 @@ public class GoogleEndpointProvider : BaseEndpointProvider, IEndpointProvider, I
             CapabilityEndpoints.Caching => "cachedContents",
             CapabilityEndpoints.Models => "models",
             CapabilityEndpoints.Tokenize => "models",
+            CapabilityEndpoints.Batch => "batches",
             _ => throw new Exception($"Google doesn't support endpoint {endpoint}")
         };
     }
@@ -337,7 +340,9 @@ public class GoogleEndpointProvider : BaseEndpointProvider, IEndpointProvider, I
         { typeof(ImageGenerationResult), (s, s1, req) => ImageGenerationResult.Deserialize(LLmProviders.Google, s, s1) },
         { typeof(EmbeddingResult), (s, s1, req) => EmbeddingResult.Deserialize(LLmProviders.Google, s, s1) },
         { typeof(RetrievedModelsResult), (s, s1, req) => RetrievedModelsResult.Deserialize(LLmProviders.Google, s, s1) },
-        { typeof(Tokenize.TokenizeResult), (s, s1, req) => Tokenize.TokenizeResult.Deserialize(LLmProviders.Google, s, s1) }
+        { typeof(Tokenize.TokenizeResult), (s, s1, req) => Tokenize.TokenizeResult.Deserialize(LLmProviders.Google, s, s1) },
+        { typeof(BatchItem), (s, s1, req) => VendorGoogleBatchItem.Deserialize(s) },
+        { typeof(BatchResult), (s, s1, req) => BatchResult.Deserialize(LLmProviders.Google, s) }
     };
     
     public override T? InboundMessage<T>(string jsonData, string? postData, object? request) where T : default
