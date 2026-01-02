@@ -367,6 +367,37 @@ public partial class ChatDemo : DemoBase
         await BasicChat(ChatModel.Alibaba.Flagship.Qwen3Max);
     }
     
+    [TornadoTest]
+    public static async Task UpstageSolarPro2()
+    {
+        await BasicChat(ChatModel.Upstage.SolarPro2);
+    }
+    
+    [TornadoTest]
+    public static async Task UpstageSolarPro2Reasoning()
+    {
+        Conversation chat = Program.Connect().Chat.CreateConversation(new ChatRequest
+        {
+            Model = ChatModel.Upstage.SolarPro2,
+            ReasoningEffort = ChatReasoningEfforts.High,
+            Messages = [
+                new ChatMessage(ChatMessageRoles.User, "Solve step-by-step: If a train travels 120 miles in 2 hours, and another train travels 180 miles in 3 hours, which train is faster?")
+            ]
+        });
+
+        ChatRichResponse response = await chat.GetResponseRich();
+        
+        Console.WriteLine("Upstage Solar Pro 2:");
+        Console.WriteLine(response);
+        Console.WriteLine($"Usage: {response.Usage?.TotalTokens} tokens");
+    }
+    
+    [TornadoTest]
+    public static async Task UpstageSolarMini()
+    {
+        await BasicChat(ChatModel.Upstage.SolarMini);
+    }
+    
     // ===== Claude Opus 4.5 Specific Features =====
     
     [TornadoTest]

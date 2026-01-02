@@ -1540,6 +1540,10 @@ public enum LLmProviders
     /// </summary>
     Requesty,
     /// <summary>
+    /// Upstage.
+    /// </summary>
+    Upstage,
+    /// <summary>
     /// Internal value.
     /// </summary>
     Length

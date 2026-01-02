@@ -64,6 +64,10 @@ internal static class EndpointProviderConverter
             {
                 UrlResolver = (endpoint, url, ctx) => $"{string.Format(api.ApiUrlFormat ?? "https://router.requesty.ai/{0}/{1}", api.ResolveApiVersion(), OpenAiEndpointProvider.GetEndpointUrlFragment(endpoint, LLmProviders.Requesty))}{url}"
             },
+            LLmProviders.Upstage => new OpenAiEndpointProvider(LLmProviders.Upstage)
+            {
+                UrlResolver = (endpoint, url, ctx) => $"{string.Format(api.ApiUrlFormat ?? "https://api.upstage.ai/v1/{0}", OpenAiEndpointProvider.GetEndpointUrlFragment(endpoint, LLmProviders.Upstage))}{url}"
+            },
             _ => new OpenAiEndpointProvider()
         };
 

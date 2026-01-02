@@ -39,6 +39,7 @@ public class Program
         public string Alibaba { get; set; }
         public string Pinecone { get; set; }
         public string Requesty { get; set; }
+        public string Upstage { get; set; }
     }
 
     public static TornadoApi ConnectMulti(bool httpStrict = true)
@@ -61,6 +62,7 @@ public class Program
             new ProviderAuthentication(LLmProviders.Blablador, ApiKeys.Blablador),
             new ProviderAuthentication(LLmProviders.Alibaba, ApiKeys.Alibaba),
             new ProviderAuthentication(LLmProviders.Requesty, ApiKeys.Requesty),
+            new ProviderAuthentication(LLmProviders.Upstage, ApiKeys.Upstage)
         ])
         {
             HttpStrict = httpStrict

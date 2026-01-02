@@ -7,6 +7,7 @@ using LlmTornado.Embedding.Models.Cohere;
 using LlmTornado.Embedding.Models.Google;
 using LlmTornado.Embedding.Models.Mistral;
 using LlmTornado.Embedding.Models.OpenAi;
+using LlmTornado.Embedding.Models.Upstage;
 using LlmTornado.Embedding.Models.Voyage;
 using LlmTornado.Models;
 
@@ -43,6 +44,12 @@ public class EmbeddingModel : ModelEmbeddingBase
     public static readonly EmbeddingModelMistral Mistral = new EmbeddingModelMistral();
     
     /// <summary>
+    /// Models from Upstage.
+    /// </summary>
+    public static readonly EmbeddingModelUpstage Upstage = new EmbeddingModelUpstage();
+
+    
+    /// <summary>
     /// All known models keyed by name.
     /// </summary>
     public static readonly Dictionary<string, IModel> AllModelsMap = [];
@@ -59,7 +66,8 @@ public class EmbeddingModel : ModelEmbeddingBase
             ..Voyage.AllModels,
             ..Cohere.AllModels,
             ..Google.AllModels,
-            ..Mistral.AllModels
+            ..Mistral.AllModels,
+            ..Upstage.AllModels
         ];
         
         AllModels.ForEach(x =>

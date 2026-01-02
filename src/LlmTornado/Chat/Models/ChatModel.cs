@@ -9,6 +9,7 @@ using LlmTornado.Chat.Models.Mistral;
 using LlmTornado.Chat.Models.MoonshotAi;
 using LlmTornado.Chat.Models.OpenRouter;
 using LlmTornado.Chat.Models.Perplexity;
+using LlmTornado.Chat.Models.Upstage;
 using LlmTornado.Chat.Models.XAi;
 using LlmTornado.Chat.Models.Zai;
 using LlmTornado.Chat.Models.Requesty;
@@ -103,6 +104,11 @@ public class ChatModel : ModelBase
     /// Models from Requesty.
     /// </summary>
     public static readonly ChatModelRequesty Requesty = new ChatModelRequesty();
+    
+    /// <summary>
+    /// Models provided by Upstage.
+    /// </summary>
+    public static readonly ChatModelUpstage Upstage = new ChatModelUpstage();
     
     /// <summary>
     /// All known models keyed by name.
@@ -219,7 +225,7 @@ public class ChatModel : ModelBase
 
     private static readonly Lazy<List<BaseVendorModelProvider>> LazyAllProviders = new Lazy<List<BaseVendorModelProvider>>(() => [
         OpenAi, Anthropic, Cohere, Google, Groq, DeepSeek, Mistral, XAi, Perplexity,
-        Zai, MoonshotAi, DeepInfra, OpenRouter, Blablador, Alibaba, Requesty
+        Zai, MoonshotAi, DeepInfra, OpenRouter, Blablador, Alibaba, Requesty, Upstage
     ]);
     
     /// <summary>

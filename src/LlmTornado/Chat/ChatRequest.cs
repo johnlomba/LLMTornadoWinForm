@@ -648,6 +648,25 @@ public class ChatRequest : IModelRequest, ISerializableRequest, IHeaderProvider
 			}
 		},
 		{
+			LLmProviders.Upstage, (x, y, z, a) =>
+			{
+				if (x.ReasoningEffort is not null && x.ReasoningEffort != ChatReasoningEfforts.None)
+				{
+					x.ReasoningEffort = x.ReasoningEffort switch
+					{
+						ChatReasoningEfforts.Low => ChatReasoningEfforts.Low,
+						ChatReasoningEfforts.High => ChatReasoningEfforts.High,
+						ChatReasoningEfforts.Minimal => ChatReasoningEfforts.Low,
+						ChatReasoningEfforts.Medium => ChatReasoningEfforts.High,
+						ChatReasoningEfforts.XHigh => ChatReasoningEfforts.High,
+						_ => ChatReasoningEfforts.Low
+					};
+				}
+				
+				return PreparePayload(x, x, y, z, GetSerializer(EndpointBase.NullSettings, a));
+			}
+		},
+		{
 			LLmProviders.MoonshotAi, (x, y, z, a) =>
 			{
 				// temperature parameter in the Kimi API is [0, 1]
