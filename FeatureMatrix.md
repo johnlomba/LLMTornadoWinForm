@@ -23,6 +23,7 @@ _Empty field means the feature is unsupported by the provider._
 | **DeepInfra** | ✅ | | | | | | | | | | | | | |
 | **OpenRouter**| ✅ | ✅ | ✅ | | | | | | | | | | | |
 | **Requesty**| ✅ | ✅ | ✅ | | | | | | | | | | | |
+| **Upstage** | ✅ | | ✅ | | | | | | | | | | | |
 | **Z.ai** | ✅ | | | ✅ | | | | | | ❌ | | | | |
 | **Alibaba** | ✅ | ✅ | ✅ | | | | | | | | | | | ❌ |
 | **Blablador** | ✅ | ✅ | ✅ | | | | | | | | | | | |
