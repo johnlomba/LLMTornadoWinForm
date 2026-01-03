@@ -41,6 +41,7 @@ LLM Tornado is a .NET provider-agnostic SDK that empowers developers to build, o
 </div>
 
 ## 🔥 News 2025
+- 25/12 - [Upstage](https://www.upstage.ai) connector is implemented. `/batch` endpoint is implemented for OpenAI, Anthropic, and Google. `/videos` endpoint now supports OpenAI/Sora.
 - 25/11 - [Flowbite Blazor](https://github.com/themesberg/flowbite-blazor) uses LLM Tornado to build their [AI Chat](https://flowbite-blazor.org/docs/ai/chat) WASM component. [Requesty](https://www.requesty.ai) connector is implemented. `/tokenize` endpoint is implemented for all Providers supporting the feature.
 - 25/10 - LLM Tornado is featured in [dotInsights](https://blog.jetbrains.com/dotnet/2025/10/06/dotinsights-october-2025) by [JetBrains](https://www.jetbrains.com). [Microsoft](https://www.microsoft.com) uses LLM Tornado in [Generative AI for Beginners .NET](https://github.com/microsoft/Generative-AI-for-beginners-dotnet). Interoperability with [Microsoft.Extensions.AI](https://github.com/dotnet/extensions) is launched. [Skills](https://llmtornado.ai/llmtornado/anthropic-specific/skills) protocol is implemented.
 - 25/09 - Maintainers [Matěj Štágl](https://github.com/lofcz) and [John Lomba](https://github.com/Johnny2x2) talk about LLM Tornado in [.NET AI Community Standup](https://www.youtube.com/watch?v=h7yTai0cRtE). [PgVector](https://llmtornado.ai/vectordatabases/pgvector) and [ChromaDb](https://llmtornado.ai/vectordatabases/chromadb) connectors are implemented.
