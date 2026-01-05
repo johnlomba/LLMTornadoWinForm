@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using LlmTornado.Code;
 using LlmTornado.Code.Models;
@@ -22,9 +23,11 @@ public class AudioModelMistralFree : IVendorModelClassProvider
     /// <summary>
     /// All known free models from Mistral.
     /// </summary>
-    public static readonly List<IModel> ModelsAll = [
+    public static List<IModel> ModelsAll => LazyModelsAll.Value;
+
+    private static readonly Lazy<List<IModel>> LazyModelsAll = new Lazy<List<IModel>>(() => [
         ModelVoxtralMini2507
-    ];
+    ]);
 
     /// <summary>
     /// <inheritdoc cref="ModelsAll"/>

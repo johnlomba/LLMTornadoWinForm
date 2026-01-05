@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using LlmTornado.Code;
 using LlmTornado.Code.Models;
@@ -32,9 +33,11 @@ public class ImageModelOpenAiGpt : IVendorModelClassProvider
     /// <summary>
     /// All known GPT image models from OpenAI.
     /// </summary>
-    public static readonly List<IModel> ModelsAll = [
+    public static List<IModel> ModelsAll => LazyModelsAll.Value;
+    
+    private static readonly Lazy<List<IModel>> LazyModelsAll = new Lazy<List<IModel>>(() => [
         ModelV1, ModelV1Mini
-    ];
+    ]);
 
     /// <summary>
     /// <inheritdoc cref="ModelsAll"/>

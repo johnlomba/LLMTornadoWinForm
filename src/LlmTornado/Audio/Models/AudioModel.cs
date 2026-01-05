@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using LlmTornado.Audio.Models.Groq;
 using LlmTornado.Audio.Models.Mistral;
 using LlmTornado.Audio.Models.OpenAi;
@@ -33,12 +34,35 @@ public class AudioModel : ModelBase
     /// <summary>
     /// All known models keyed by name.
     /// </summary>
-    public static readonly Dictionary<string, IModel> AllModelsMap = [];
+    public static Dictionary<string, IModel> AllModelsMap => LazyAllModelsMap.Value;
+
+    private static readonly Lazy<Dictionary<string, IModel>> LazyAllModelsMap = new Lazy<Dictionary<string, IModel>>(() =>
+    {
+        Dictionary<string, IModel> map = [];
+
+        AllModels.ForEach(x =>
+        {
+            map.TryAdd(x.Name, x);
+        });
+
+        return map;
+    });
 
     /// <summary>
-    /// All known chat models.
+    /// All known audio models.
     /// </summary>
-    public static readonly List<IModel> AllModels;
+    public static List<IModel> AllModels => LazyAllModels.Value;
+    
+    private static readonly Lazy<List<IModel>> LazyAllModels = new Lazy<List<IModel>>(() => AllProviders.SelectMany(x => x.AllModels).ToList());
+
+    /// <summary>
+    /// All known audio model providers.
+    /// </summary>
+    public static List<BaseVendorModelProvider> AllProviders => LazyAllProviders.Value;
+
+    private static readonly Lazy<List<BaseVendorModelProvider>> LazyAllProviders = new Lazy<List<BaseVendorModelProvider>>(() => [
+        OpenAi, Groq, Mistral
+    ]);
     
     /// <summary>
     /// Represents a Model with the given name.
@@ -125,20 +149,6 @@ public class AudioModel : ModelBase
     public static implicit operator AudioModel(string? name)
     {
         return new AudioModel(name ?? string.Empty, name is null ? LLmProviders.OpenAi : GetProvider(name) ?? LLmProviders.OpenAi);
-    }
-    
-    static AudioModel()
-    {
-        AllModels = [
-            ..OpenAi.AllModels,
-            ..Groq.AllModels,
-            ..Mistral.AllModels
-        ];
-        
-        AllModels.ForEach(x =>
-        {
-            AllModelsMap.TryAdd(x.Name, x);
-        });
     }
 }
 

@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using LlmTornado.Chat.Models;
 using LlmTornado.Code;
@@ -18,7 +20,7 @@ namespace LlmTornado.Embedding.Models;
 /// </summary>
 public class EmbeddingModel : ModelEmbeddingBase
 {
-     /// <summary>
+    /// <summary>
     /// Models from OpenAI.
     /// </summary>
     public static readonly EmbeddingModelOpenAi OpenAi = new EmbeddingModelOpenAi();
@@ -48,33 +50,38 @@ public class EmbeddingModel : ModelEmbeddingBase
     /// </summary>
     public static readonly EmbeddingModelUpstage Upstage = new EmbeddingModelUpstage();
 
-    
     /// <summary>
     /// All known models keyed by name.
     /// </summary>
-    public static readonly Dictionary<string, IModel> AllModelsMap = [];
+    public static Dictionary<string, IModel> AllModelsMap => LazyAllModelsMap.Value;
 
-    /// <summary>
-    /// All known chat models.
-    /// </summary>
-    public static readonly List<IModel> AllModels;
-    
-    static EmbeddingModel()
+    private static readonly Lazy<Dictionary<string, IModel>> LazyAllModelsMap = new Lazy<Dictionary<string, IModel>>(() =>
     {
-        AllModels = [
-            ..OpenAi.AllModels,
-            ..Voyage.AllModels,
-            ..Cohere.AllModels,
-            ..Google.AllModels,
-            ..Mistral.AllModels,
-            ..Upstage.AllModels
-        ];
-        
+        Dictionary<string, IModel> map = [];
+
         AllModels.ForEach(x =>
         {
-            AllModelsMap.TryAdd(x.Name, x);
+            map.TryAdd(x.Name, x);
         });
-    }
+
+        return map;
+    });
+
+    /// <summary>
+    /// All known embedding models.
+    /// </summary>
+    public static List<IModel> AllModels => LazyAllModels.Value;
+    
+    private static readonly Lazy<List<IModel>> LazyAllModels = new Lazy<List<IModel>>(() => AllProviders.SelectMany(x => x.AllModels).ToList());
+
+    /// <summary>
+    /// All known embedding model providers.
+    /// </summary>
+    public static List<BaseVendorModelProvider> AllProviders => LazyAllProviders.Value;
+
+    private static readonly Lazy<List<BaseVendorModelProvider>> LazyAllProviders = new Lazy<List<BaseVendorModelProvider>>(() => [
+        OpenAi, Voyage, Cohere, Google, Mistral, Upstage
+    ]);
     
     /// <summary>
     /// Represents a Model with the given name.

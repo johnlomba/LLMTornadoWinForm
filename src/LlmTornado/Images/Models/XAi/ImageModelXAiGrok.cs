@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using LlmTornado.Code;
 using LlmTornado.Code.Models;
@@ -23,9 +24,11 @@ public class ImageModelXAiGrok : IVendorModelClassProvider
     /// <summary>
     /// All known Grok models from xAI.
     /// </summary>
-    public static readonly List<IModel> ModelsAll = [
+    public static List<IModel> ModelsAll => LazyModelsAll.Value;
+    
+    private static readonly Lazy<List<IModel>> LazyModelsAll = new Lazy<List<IModel>>(() => [
         ModelV2241212
-    ];
+    ]);
 
     /// <summary>
     /// <inheritdoc cref="ModelsAll"/>

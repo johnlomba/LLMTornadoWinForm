@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using LlmTornado.Code;
 using LlmTornado.Code.Models;
@@ -42,11 +43,13 @@ public class AudioModelOpenAiTts : IVendorModelClassProvider
     /// <summary>
     /// All known Tts models from OpenAI.
     /// </summary>
-    public static readonly List<IModel> ModelsAll = [
+    public static List<IModel> ModelsAll => LazyModelsAll.Value;
+
+    private static readonly Lazy<List<IModel>> LazyModelsAll = new Lazy<List<IModel>>(() => [
         ModelTts1,
         ModelTts1Hd,
         ModelGpt4OMiniTts20251215
-    ];
+    ]);
 
     /// <summary>
     /// <inheritdoc cref="ModelsAll"/>

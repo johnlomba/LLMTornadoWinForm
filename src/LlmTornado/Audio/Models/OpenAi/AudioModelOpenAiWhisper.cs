@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using LlmTornado.Chat.Models;
 using LlmTornado.Code;
@@ -23,9 +24,11 @@ public class AudioModelOpenAiWhisper : IVendorModelClassProvider
     /// <summary>
     /// All known Whisper models from OpenAI.
     /// </summary>
-    public static readonly List<IModel> ModelsAll = [
+    public static List<IModel> ModelsAll => LazyModelsAll.Value;
+
+    private static readonly Lazy<List<IModel>> LazyModelsAll = new Lazy<List<IModel>>(() => [
         ModelV2
-    ];
+    ]);
 
     /// <summary>
     /// <inheritdoc cref="ModelsAll"/>

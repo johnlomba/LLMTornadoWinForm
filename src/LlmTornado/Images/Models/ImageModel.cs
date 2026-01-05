@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using LlmTornado.Chat.Models;
 using LlmTornado.Code;
 using LlmTornado.Code.Models;
@@ -38,27 +40,30 @@ public class ImageModel : ModelBase
     /// <summary>
     /// All known models keyed by name.
     /// </summary>
-    public static readonly Dictionary<string, IModel> AllModelsMap = [];
+    public static Dictionary<string, IModel> AllModelsMap => LazyAllModelsMap.Value;
+    
+    private static readonly Lazy<Dictionary<string, IModel>> LazyAllModelsMap = new Lazy<Dictionary<string, IModel>>(() =>
+    {
+        Dictionary<string, IModel> map = [];
+        AllModels.ForEach(x => { map.TryAdd(x.Name, x); });
+        return map;
+    });
 
     /// <summary>
-    /// All known chat models.
+    /// All known image models.
     /// </summary>
-    public static readonly List<IModel> AllModels;
+    public static List<IModel> AllModels => LazyAllModels.Value;
     
-    static ImageModel()
-    {
-        AllModels = [
-            ..OpenAi.AllModels,
-            ..Google.AllModels,
-            ..XAi.AllModels,
-            ..DeepInfra.AllModels
-        ];
-        
-        AllModels.ForEach(x =>
-        {
-            AllModelsMap.TryAdd(x.Name, x);
-        });
-    }
+    private static readonly Lazy<List<IModel>> LazyAllModels = new Lazy<List<IModel>>(() => AllProviders.SelectMany(x => x.AllModels).ToList());
+    
+    /// <summary>
+    /// All known image model providers.
+    /// </summary>
+    public static List<BaseVendorModelProvider> AllProviders => LazyAllProviders.Value;
+    
+    private static readonly Lazy<List<BaseVendorModelProvider>> LazyAllProviders = new Lazy<List<BaseVendorModelProvider>>(() => [
+        OpenAi, Google, XAi, DeepInfra
+    ]);
     
     /// <summary>
     /// Represents a Model with the given name.

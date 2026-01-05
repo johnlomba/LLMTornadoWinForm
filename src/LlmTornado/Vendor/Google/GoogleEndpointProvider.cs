@@ -212,7 +212,7 @@ public class GoogleEndpointProvider : BaseEndpointProvider, IEndpointProvider, I
                         {
                             Delta = new ChatMessage
                             {
-                                Role = ChatMessageRoles.Tool,
+                                Role = ChatMessageRoles.Assistant,
                                 ToolCalls = [
                                     new ToolCall
                                     {

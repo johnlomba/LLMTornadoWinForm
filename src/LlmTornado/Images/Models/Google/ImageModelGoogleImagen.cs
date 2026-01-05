@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using LlmTornado.Code;
 using LlmTornado.Code.Models;
@@ -52,12 +53,14 @@ public class ImageModelGoogleImagen : IVendorModelClassProvider
     /// <summary>
     /// All known Imagen models from Google.
     /// </summary>
-    public static readonly List<IModel> ModelsAll = [
+    public static List<IModel> ModelsAll => LazyModelsAll.Value;
+    
+    private static readonly Lazy<List<IModel>> LazyModelsAll = new Lazy<List<IModel>>(() => [
         ModelV3Generate002,
         ModelV4FastGenerate001,
         ModelV4UltraGenerate001,
         ModelV4Generate001
-    ];
+    ]);
 
     /// <summary>
     /// <inheritdoc cref="ModelsAll"/>

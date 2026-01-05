@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using LlmTornado.Code;
 using LlmTornado.Code.Models;
@@ -14,7 +15,7 @@ public class EmbeddingModelVoyageGen2 : BaseVendorModelProvider
     public override LLmProviders Provider => LLmProviders.Voyage;
     
     /// <summary>
-    /// Voyage AI’s most powerful generalist embedding model.
+    /// Voyage AI's most powerful generalist embedding model.
     /// </summary>
     public static readonly EmbeddingModel ModelLarge = new EmbeddingModel("voyage-large-2", LLmProviders.Voyage, 4_096, 1_536);
 
@@ -71,25 +72,26 @@ public class EmbeddingModelVoyageGen2 : BaseVendorModelProvider
     /// <summary>
     /// Map of models owned by the provider.
     /// </summary>
-    public static readonly HashSet<string> AllModelsMap = [];
+    public static HashSet<string> AllModelsMap => LazyAllModelsMap.Value;
+
+    private static readonly Lazy<HashSet<string>> LazyAllModelsMap = new Lazy<HashSet<string>>(() =>
+    {
+        HashSet<string> map = [];
+        ModelsAll.ForEach(x => { map.Add(x.Name); });
+        return map;
+    });
     
     /// <summary>
     /// All known Voyage 2 models from Anthropic.
     /// </summary>
-    public static readonly List<IModel> ModelsAll = [
+    public static List<IModel> ModelsAll => LazyModelsAll.Value;
+
+    private static readonly Lazy<List<IModel>> LazyModelsAll = new Lazy<List<IModel>>(() => [
         ModelLarge,
         ModelCode,
         ModelDefault,
         ModelLiteInstruct
-    ];
-
-    static EmbeddingModelVoyageGen2()
-    {
-        ModelsAll.ForEach(x =>
-        {
-            AllModelsMap.Add(x.Name);
-        });
-    }
+    ]);
     
     internal EmbeddingModelVoyageGen2()
     {

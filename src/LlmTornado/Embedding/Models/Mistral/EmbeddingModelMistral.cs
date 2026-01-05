@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using LlmTornado.Code;
 using LlmTornado.Code.Models;
@@ -35,22 +36,23 @@ public class EmbeddingModelMistral : BaseVendorModelProvider
     /// <summary>
     /// Map of models owned by the provider.
     /// </summary>
-    public static readonly HashSet<string> AllModelsMap = [];
+    public static HashSet<string> AllModelsMap => LazyAllModelsMap.Value;
+
+    private static readonly Lazy<HashSet<string>> LazyAllModelsMap = new Lazy<HashSet<string>>(() =>
+    {
+        HashSet<string> map = [];
+        ModelsAll.ForEach(x => { map.Add(x.Name); });
+        return map;
+    });
     
     /// <summary>
     /// <inheritdoc cref="AllModels"/>
     /// </summary>
-    public static readonly List<IModel> ModelsAll = [
+    public static List<IModel> ModelsAll => LazyModelsAll.Value;
+
+    private static readonly Lazy<List<IModel>> LazyModelsAll = new Lazy<List<IModel>>(() => [
         ..EmbeddingModelMistralPremier.ModelsAll
-    ];
-    
-    static EmbeddingModelMistral()
-    {
-        ModelsAll.ForEach(x =>
-        {
-            AllModelsMap.Add(x.Name);
-        });
-    }
+    ]);
     
     internal EmbeddingModelMistral()
     {

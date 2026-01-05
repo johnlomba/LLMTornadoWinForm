@@ -465,7 +465,7 @@ public class OpenAiEndpointProvider : BaseEndpointProvider, IEndpointProvider, I
             }
 
             toolsAccumulator.Usage = usage;
-            toolsMessage.Role = ChatMessageRoles.Tool;
+            toolsMessage.Role = ChatMessageRoles.Assistant;
             yield return toolsAccumulator;
             yield break;
         }

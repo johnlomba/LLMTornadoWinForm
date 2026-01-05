@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using LlmTornado.Chat.Models;
 using LlmTornado.Code;
@@ -33,10 +34,12 @@ public class ImageModelOpenAiDalle : IVendorModelClassProvider
     /// <summary>
     /// All known Dalle models from OpenAI.
     /// </summary>
-    public static readonly List<IModel> ModelsAll = [
+    public static List<IModel> ModelsAll => LazyModelsAll.Value;
+    
+    private static readonly Lazy<List<IModel>> LazyModelsAll = new Lazy<List<IModel>>(() => [
         ModelV2, 
         ModelV3
-    ];
+    ]);
 
     /// <summary>
     /// <inheritdoc cref="ModelsAll"/>

@@ -416,7 +416,7 @@ public class AnthropicEndpointProvider : BaseEndpointProvider, IEndpointProvider
 
                             tc.FunctionCall = fc;
                         
-                            accuToolsMessage ??= new ChatMessage(ChatMessageRoles.Tool)
+                            accuToolsMessage ??= new ChatMessage(ChatMessageRoles.Assistant)
                             {
                                 ToolCalls = []
                             };

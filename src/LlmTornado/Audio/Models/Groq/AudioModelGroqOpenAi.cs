@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using LlmTornado.Chat.Models;
 using LlmTornado.Code;
@@ -52,12 +53,13 @@ public class AudioModelGroqOpenAi : IVendorModelClassProvider
     /// <summary>
     /// All known Google models from Groq.
     /// </summary>
-    public static readonly List<IModel> ModelsAll =
-    [
+    public static List<IModel> ModelsAll => LazyModelsAll.Value;
+
+    private static readonly Lazy<List<IModel>> LazyModelsAll = new Lazy<List<IModel>>(() => [
         ModelWhisperV3Turbo,
         ModelWhisperV3Distill,
         ModelWhisperV3
-    ];
+    ]);
 
     /// <summary>
     /// <inheritdoc cref="ModelsAll"/>

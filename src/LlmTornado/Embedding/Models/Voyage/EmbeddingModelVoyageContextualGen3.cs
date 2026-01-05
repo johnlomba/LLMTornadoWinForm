@@ -1,5 +1,5 @@
+using System;
 using System.Collections.Generic;
-using System.Linq;
 using LlmTornado.Code;
 using LlmTornado.Code.Models;
 
@@ -14,7 +14,7 @@ public class EmbeddingModelVoyageContextualGen3 : BaseVendorModelProvider
     public override LLmProviders Provider => LLmProviders.Voyage;
     
     /// <summary>
-    /// A novel contextualized chunk embedding model, where chunk embedding encodes not only the chunk’s own content, but also captures the contextual information from the full document.
+    /// A novel contextualized chunk embedding model, where chunk embedding encodes not only the chunk's own content, but also captures the contextual information from the full document.
     /// </summary>
     public static readonly ContextualEmbeddingModel ModelContext3 = new ContextualEmbeddingModel("voyage-context-3", LLmProviders.Voyage, 32_000, 1024, [ 256, 512, 1024, 2048 ]);
 
@@ -41,19 +41,23 @@ public class EmbeddingModelVoyageContextualGen3 : BaseVendorModelProvider
     /// <summary>
     /// Map of models owned by the provider.
     /// </summary>
-    public static readonly HashSet<string> AllModelsMap;
+    public static HashSet<string> AllModelsMap => LazyAllModelsMap.Value;
+
+    private static readonly Lazy<HashSet<string>> LazyAllModelsMap = new Lazy<HashSet<string>>(() =>
+    {
+        HashSet<string> map = [];
+        ModelsAll.ForEach(x => { map.Add(x.Name); });
+        return map;
+    });
     
     /// <summary>
     /// All known Voyage Contextual Gen 3 models.
     /// </summary>
-    public static readonly List<IModel> ModelsAll = [
-        ModelContext3
-    ];
+    public static List<IModel> ModelsAll => LazyModelsAll.Value;
 
-    static EmbeddingModelVoyageContextualGen3()
-    {
-        AllModelsMap = new HashSet<string>(ModelsAll.Select(x => x.Name));
-    }
+    private static readonly Lazy<List<IModel>> LazyModelsAll = new Lazy<List<IModel>>(() => [
+        ModelContext3
+    ]);
     
     internal EmbeddingModelVoyageContextualGen3()
     {

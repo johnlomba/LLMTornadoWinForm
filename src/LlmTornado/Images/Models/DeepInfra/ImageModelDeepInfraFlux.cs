@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using LlmTornado.Chat.Models;
 using LlmTornado.Code;
@@ -73,14 +74,16 @@ public class ImageModelDeepInfraFlux : IVendorModelClassProvider
     /// <summary>
     /// All known Flux models from DeepInfra.
     /// </summary>
-    public static readonly List<IModel> ModelsAll = [
+    public static List<IModel> ModelsAll => LazyModelsAll.Value;
+    
+    private static readonly Lazy<List<IModel>> LazyModelsAll = new Lazy<List<IModel>>(() => [
         ModelFlux1KontextDev, 
         ModelFlux1ReduxDev, 
         ModelFlux1Dev,
         ModelFlux1Schnell,
         ModelFluxPro,
         ModelFlux11Pro
-    ];
+    ]);
 
     /// <summary>
     /// <inheritdoc cref="ModelsAll"/>

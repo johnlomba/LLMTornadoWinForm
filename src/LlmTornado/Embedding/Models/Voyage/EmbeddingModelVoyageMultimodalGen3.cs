@@ -1,5 +1,5 @@
+using System;
 using System.Collections.Generic;
-using System.Linq;
 using LlmTornado.Code;
 using LlmTornado.Code.Models;
 
@@ -39,20 +39,23 @@ public class EmbeddingModelVoyageMultimodalGen3 : BaseVendorModelProvider
     /// <summary>
     /// Map of models owned by the provider.
     /// </summary>
-    public static readonly HashSet<string> AllModelsMap;
+    public static HashSet<string> AllModelsMap => LazyAllModelsMap.Value;
+
+    private static readonly Lazy<HashSet<string>> LazyAllModelsMap = new Lazy<HashSet<string>>(() =>
+    {
+        HashSet<string> map = [];
+        ModelsAll.ForEach(x => { map.Add(x.Name); });
+        return map;
+    });
     
     /// <summary>
     /// All known Voyage Multimodal Gen 3 models.
     /// </summary>
-    public static readonly List<IModel> ModelsAll =
-    [
-        ModelMultimodal3
-    ];
+    public static List<IModel> ModelsAll => LazyModelsAll.Value;
 
-    static EmbeddingModelVoyageMultimodalGen3()
-    {
-        AllModelsMap = new HashSet<string>(ModelsAll.Select(x => x.Name));
-    }
+    private static readonly Lazy<List<IModel>> LazyModelsAll = new Lazy<List<IModel>>(() => [
+        ModelMultimodal3
+    ]);
     
     internal EmbeddingModelVoyageMultimodalGen3()
     {

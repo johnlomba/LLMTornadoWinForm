@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using LlmTornado.Code;
 using LlmTornado.Code.Models;
@@ -45,46 +46,53 @@ public class AudioModelOpenAi : BaseVendorModelProvider
     /// <summary>
     /// Map of models owned by the provider.
     /// </summary>
-    public static readonly HashSet<string> AllModelsMap = [];
+    public static HashSet<string> AllModelsMap => LazyAllModelsMap.Value;
+
+    private static readonly Lazy<HashSet<string>> LazyAllModelsMap = new Lazy<HashSet<string>>(() =>
+    {
+        HashSet<string> map = [];
+        ModelsAll.ForEach(x => { map.Add(x.Name); });
+        return map;
+    });
     
     /// <summary>
     /// <inheritdoc cref="AllModels"/>
     /// </summary>
-    public static readonly List<IModel> ModelsAll = [
+    public static List<IModel> ModelsAll => LazyModelsAll.Value;
+
+    private static readonly Lazy<List<IModel>> LazyModelsAll = new Lazy<List<IModel>>(() => [
         ..AudioModelOpenAiWhisper.ModelsAll,
         ..AudioModelOpenAiTts.ModelsAll,
         ..AudioModelOpenAiGpt4.ModelsAll
-    ];
+    ]);
 
     /// <summary>
     /// Models supporting "verbose_json" output & "timestamp_granularities"
     /// </summary>
-    public static readonly List<IModel> VerboseJsonCompatibleModels = [
+    public static List<IModel> VerboseJsonCompatibleModels => LazyVerboseJsonCompatibleModels.Value;
+
+    private static readonly Lazy<List<IModel>> LazyVerboseJsonCompatibleModels = new Lazy<List<IModel>>(() => [
         ..AudioModelOpenAiWhisper.ModelsAll
-    ];
+    ]);
     
     /// <summary>
     /// Models supporting streaming.
     /// </summary>
-    public static readonly List<IModel> StreamingCompatibleModels = [
+    public static List<IModel> StreamingCompatibleModels => LazyStreamingCompatibleModels.Value;
+
+    private static readonly Lazy<List<IModel>> LazyStreamingCompatibleModels = new Lazy<List<IModel>>(() => [
         ..AudioModelOpenAiTts.ModelsAll,
         ..AudioModelOpenAiGpt4.ModelsAll
-    ];
+    ]);
     
     /// <summary>
     /// Models supporting "include".
     /// </summary>
-    public static readonly List<IModel> IncludeCompatibleModels = [
+    public static List<IModel> IncludeCompatibleModels => LazyIncludeCompatibleModels.Value;
+
+    private static readonly Lazy<List<IModel>> LazyIncludeCompatibleModels = new Lazy<List<IModel>>(() => [
         ..AudioModelOpenAiGpt4.ModelsAll
-    ];
-    
-    static AudioModelOpenAi()
-    {
-        ModelsAll.ForEach(x =>
-        {
-            AllModelsMap.Add(x.Name);
-        });
-    }
+    ]);
     
     internal AudioModelOpenAi()
     {

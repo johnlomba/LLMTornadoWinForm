@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using LlmTornado.Code;
 using LlmTornado.Code.Models;
@@ -72,14 +73,16 @@ public class AudioModelOpenAiGpt4 : IVendorModelClassProvider
     /// <summary>
     /// All known Gpt4 models from OpenAI.
     /// </summary>
-    public static readonly List<IModel> ModelsAll = [
+    public static List<IModel> ModelsAll => LazyModelsAll.Value;
+
+    private static readonly Lazy<List<IModel>> LazyModelsAll = new Lazy<List<IModel>>(() => [
         Model4OMiniTts,
         Model4OTranscribe,
         Model4OMiniTranscribe,
         ModelGptAudioMini20251215,
         ModelGpt4OMiniTranscribe20251215,
         ModelGpt4OTranscribeDiarize
-    ];
+    ]);
 
     /// <summary>
     /// <inheritdoc cref="ModelsAll"/>

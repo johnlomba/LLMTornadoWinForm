@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using LlmTornado.Code;
 using LlmTornado.Code.Models;
@@ -31,12 +32,14 @@ public class EmbeddingModelOpenAiGen3 : IVendorModelClassProvider
     public readonly EmbeddingModel Small = ModelSmall;
     
     /// <summary>
-    /// All known Generation 2 models from OpenAI.
+    /// All known Generation 3 models from OpenAI.
     /// </summary>
-    public static readonly List<IModel> ModelsAll = [
+    public static List<IModel> ModelsAll => LazyModelsAll.Value;
+
+    private static readonly Lazy<List<IModel>> LazyModelsAll = new Lazy<List<IModel>>(() => [
         ModelLarge,
         ModelSmall
-    ];
+    ]);
 
     /// <summary>
     /// <inheritdoc cref="ModelsAll"/>
