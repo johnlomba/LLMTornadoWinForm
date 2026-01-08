@@ -3,6 +3,9 @@
     <File Path="../LICENSE" />
     <File Path="../README.md" />
   </Folder>
+  <Folder Name="/Agents/UI Components Windows/">
+    <Project Path="TornadoViews/TornadoViews.csproj" Id="f82b682f-669c-455e-8a0e-9a15d42f1be4" />
+  </Folder>
   <Folder Name="/Docs Arcade/">
     <Project Path="fork_blazor_workers/src/BlazorWorker.Extensions.JSRuntime/BlazorWorker.Extensions.JSRuntime.csproj" />
     <Project Path="fork_blazor_workers/src/BlazorWorker.ServiceFactory/BlazorWorker.BackgroundServiceFactory.csproj" />
