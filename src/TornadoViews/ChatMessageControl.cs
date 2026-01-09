@@ -22,21 +22,14 @@ namespace TornadoViews
         private FlowLayoutPanel actionPanel = null!;
         private Button copyButton = null!;
         private Button retryButton = null!;
-        private Button acceptToolButton = null!;
-        private Button denyToolButton = null!;
-        private Label toolRequestLabel = null!;
+        private ToolCallPanel toolCallPanel = null!;
 
         private ToolUseDecision decision = ToolUseDecision.None;
 
         public bool ShowToolDecision
         {
-            get => acceptToolButton.Visible;
-            set
-            {
-                acceptToolButton.Visible = value;
-                denyToolButton.Visible = value;
-                toolRequestLabel.Visible = value;
-            }
+            get => toolCallPanel.Visible;
+            set => toolCallPanel.Visible = value;
         }
 
         public string Role
@@ -53,8 +46,8 @@ namespace TornadoViews
 
         public string ToolRequestText
         {
-            get => toolRequestLabel.Text;
-            set => toolRequestLabel.Text = value;
+            get => $"Tool: {toolCallPanel.ToolName}\nArguments: {toolCallPanel.Arguments}";
+            set => toolCallPanel.SetToolRequest(value);
         }
 
         public ChatMessageControl()
@@ -75,7 +68,7 @@ namespace TornadoViews
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
-                RowCount = 3,
+                RowCount = 4,
                 AutoSize = true
             };
 
@@ -97,6 +90,18 @@ namespace TornadoViews
                 Width = 600
             };
 
+            // Tool call panel (replaces simple label)
+            toolCallPanel = new ToolCallPanel
+            {
+                Visible = false,
+                Width = 580
+            };
+            toolCallPanel.ToolUseDecisionChanged += (s, d) =>
+            {
+                decision = d;
+                ToolUseDecisionChanged?.Invoke(this, d);
+            };
+
             actionPanel = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
@@ -108,34 +113,17 @@ namespace TornadoViews
 
             copyButton = new Button { Text = "Copy" };
             retryButton = new Button { Text = "Try again" };
-            acceptToolButton = new Button { Text = "Accept tool" };
-            denyToolButton = new Button { Text = "Deny tool" };
-            toolRequestLabel = new Label
-            {
-                AutoSize = true,
-                ForeColor = SystemColors.ControlDarkDark,
-                Font = new Font(Font.FontFamily, 9f, FontStyle.Italic),
-                Padding = new Padding(4, 6, 0, 0),
-                MaximumSize = new Size(500, 0)
-            };
 
             copyButton.Click += (s, e) => CopyRequested?.Invoke(this, EventArgs.Empty);
             retryButton.Click += (s, e) => RetryRequested?.Invoke(this, EventArgs.Empty);
-            acceptToolButton.Click += (s, e) => SetDecision(ToolUseDecision.Accept);
-            denyToolButton.Click += (s, e) => SetDecision(ToolUseDecision.Deny);
 
             actionPanel.Controls.Add(copyButton);
             actionPanel.Controls.Add(retryButton);
-            actionPanel.Controls.Add(toolRequestLabel);
-            actionPanel.Controls.Add(acceptToolButton);
-            actionPanel.Controls.Add(denyToolButton);
-
-            // Only show tool decision buttons when a tool approval is actively requested.
-            ShowToolDecision = false;
 
             mainLayout.Controls.Add(roleLabel, 0, 0);
             mainLayout.Controls.Add(messageBox, 0, 1);
-            mainLayout.Controls.Add(actionPanel, 0, 2);
+            mainLayout.Controls.Add(toolCallPanel, 0, 2);
+            mainLayout.Controls.Add(actionPanel, 0, 3);
 
             Controls.Add(mainLayout);
         }
@@ -144,10 +132,6 @@ namespace TornadoViews
         {
             decision = newDecision;
             ToolUseDecisionChanged?.Invoke(this, newDecision);
-
-            // visual feedback
-            acceptToolButton.Enabled = decision != ToolUseDecision.Accept;
-            denyToolButton.Enabled = decision != ToolUseDecision.Deny;
         }
 
         public ToolUseDecision GetDecision() => decision;
