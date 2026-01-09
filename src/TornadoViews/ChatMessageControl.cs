@@ -24,6 +24,7 @@ namespace TornadoViews
         private Button retryButton = null!;
         private Button acceptToolButton = null!;
         private Button denyToolButton = null!;
+        private Label toolRequestLabel = null!;
 
         private ToolUseDecision decision = ToolUseDecision.None;
 
@@ -34,8 +35,10 @@ namespace TornadoViews
             {
                 acceptToolButton.Visible = value;
                 denyToolButton.Visible = value;
+                toolRequestLabel.Visible = value;
             }
         }
+
         public string Role
         {
             get => roleLabel.Text;
@@ -46,6 +49,12 @@ namespace TornadoViews
         {
             get => messageBox.Text;
             set => ChatMarkdownRenderer.RenderToRichTextBox(messageBox, value);
+        }
+
+        public string ToolRequestText
+        {
+            get => toolRequestLabel.Text;
+            set => toolRequestLabel.Text = value;
         }
 
         public ChatMessageControl()
@@ -101,6 +110,14 @@ namespace TornadoViews
             retryButton = new Button { Text = "Try again" };
             acceptToolButton = new Button { Text = "Accept tool" };
             denyToolButton = new Button { Text = "Deny tool" };
+            toolRequestLabel = new Label
+            {
+                AutoSize = true,
+                ForeColor = SystemColors.ControlDarkDark,
+                Font = new Font(Font.FontFamily, 9f, FontStyle.Italic),
+                Padding = new Padding(4, 6, 0, 0),
+                MaximumSize = new Size(500, 0)
+            };
 
             copyButton.Click += (s, e) => CopyRequested?.Invoke(this, EventArgs.Empty);
             retryButton.Click += (s, e) => RetryRequested?.Invoke(this, EventArgs.Empty);
@@ -109,6 +126,7 @@ namespace TornadoViews
 
             actionPanel.Controls.Add(copyButton);
             actionPanel.Controls.Add(retryButton);
+            actionPanel.Controls.Add(toolRequestLabel);
             actionPanel.Controls.Add(acceptToolButton);
             actionPanel.Controls.Add(denyToolButton);
 

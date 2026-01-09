@@ -411,7 +411,12 @@ public class TornadoRunner
             if (agent.ToolPermissionRequired[toolCall.Name])
             {
                 //If tool permission is required, ask user for permission
-                permissionGranted = await toolPermissionHandle.Invoke($"Do you want to allow the agent to use the tool: {toolCall.Name}?");
+                string requestMessage = $"Tool: {toolCall.Name}";
+                if (!string.IsNullOrEmpty(toolCall.Arguments))
+                {
+                    requestMessage += $"\nArguments: {toolCall.Arguments}";
+                }
+                permissionGranted = await toolPermissionHandle.Invoke(requestMessage);
             }
         }
 

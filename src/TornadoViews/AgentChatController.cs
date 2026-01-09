@@ -92,11 +92,16 @@ namespace TornadoViews
 
                     if (_view.InvokeRequired)
                     {
-                        _view.BeginInvoke(new Action(() => _view.SetStreamingToolDecisionVisible(false)));
+                        _view.BeginInvoke(new Action(() =>
+                        {
+                            _view.SetStreamingToolDecisionVisible(false);
+                            _view.SetStreamingToolRequest(string.Empty);
+                        }));
                     }
                     else
                     {
                         _view.SetStreamingToolDecisionVisible(false);
+                        _view.SetStreamingToolRequest(string.Empty);
                     }
 
                     tcs.TrySetResult(d == ToolUseDecision.Accept);
@@ -106,10 +111,15 @@ namespace TornadoViews
 
                 if (_view.InvokeRequired)
                 {
-                    _view.BeginInvoke(new Action(() => _view.SetStreamingToolDecisionVisible(true)));
+                    _view.BeginInvoke(new Action(() =>
+                    {
+                        _view.SetStreamingToolRequest(request);
+                        _view.SetStreamingToolDecisionVisible(true);
+                    }));
                 }
                 else
                 {
+                    _view.SetStreamingToolRequest(request);
                     _view.SetStreamingToolDecisionVisible(true);
                 }
 

@@ -107,6 +107,12 @@ namespace TornadoViews
             streamingAssistant.ShowToolDecision = visible;
         }
 
+        public void SetStreamingToolRequest(string request)
+        {
+            if (streamingAssistant == null) return;
+            streamingAssistant.ToolRequestText = request;
+        }
+
         public void EndAssistantStream(string? final = null)
         {
             if (!string.IsNullOrEmpty(final))
