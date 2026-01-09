@@ -1,3 +1,7 @@
+using LlmTornado;
+using LlmTornado.Agents;
+using LlmTornado.Code;
+
 namespace TornadoViews
 {
     internal static class Program
@@ -15,11 +19,14 @@ namespace TornadoViews
             var chat = new ChatWindowControl();
             form.Controls.Add(chat);
 
-            chat.SendRequested += (s, prompt) =>
-            {
-                // Simulate assistant response
-                chat.AppendAssistantMessage("**Received:**\n\n" + prompt + "\n\n```json\n{ \"status\": \"ok\" }\n```");
-            };
+            // Create agent outside the control and attach
+            var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY")
+                ?? throw new InvalidOperationException("OPENAI_API_KEY environment variable is not set.");
+            var api = new TornadoApi(new ProviderAuthentication(LLmProviders.OpenAi, apiKey));
+            var agent = new TornadoAgent(api, LlmTornado.Chat.Models.ChatModel.OpenAi.Gpt41.V41Mini, instructions: "You are a helpful assistant.", streaming: true);
+            var controller = new AgentChatController(chat);
+            controller.AttachAgent(agent);
+
             Application.Run(form);
         }
     }

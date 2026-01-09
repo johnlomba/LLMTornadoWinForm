@@ -13,20 +13,29 @@ namespace TornadoViews
 
     public class ChatMessageControl : UserControl
     {
-        public event EventHandler CopyRequested;
-        public event EventHandler RetryRequested;
-        public event EventHandler<ToolUseDecision> ToolUseDecisionChanged;
+        public event EventHandler? CopyRequested;
+        public event EventHandler? RetryRequested;
+        public event EventHandler<ToolUseDecision>? ToolUseDecisionChanged;
 
-        private Label roleLabel;
-        private RichTextBox messageBox;
-        private FlowLayoutPanel actionPanel;
-        private Button copyButton;
-        private Button retryButton;
-        private Button acceptToolButton;
-        private Button denyToolButton;
+        private Label roleLabel = null!;
+        private RichTextBox messageBox = null!;
+        private FlowLayoutPanel actionPanel = null!;
+        private Button copyButton = null!;
+        private Button retryButton = null!;
+        private Button acceptToolButton = null!;
+        private Button denyToolButton = null!;
 
         private ToolUseDecision decision = ToolUseDecision.None;
 
+        public bool ShowToolDecision
+        {
+            get => acceptToolButton.Visible;
+            set
+            {
+                acceptToolButton.Visible = value;
+                denyToolButton.Visible = value;
+            }
+        }
         public string Role
         {
             get => roleLabel.Text;
@@ -102,6 +111,9 @@ namespace TornadoViews
             actionPanel.Controls.Add(retryButton);
             actionPanel.Controls.Add(acceptToolButton);
             actionPanel.Controls.Add(denyToolButton);
+
+            // Only show tool decision buttons when a tool approval is actively requested.
+            ShowToolDecision = false;
 
             mainLayout.Controls.Add(roleLabel, 0, 0);
             mainLayout.Controls.Add(messageBox, 0, 1);
