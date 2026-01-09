@@ -1,5 +1,7 @@
 using LlmTornado;
 using LlmTornado.Agents;
+using LlmTornado.Agents.ChatRuntime;
+using LlmTornado.Agents.ChatRuntime.RuntimeConfigurations;
 using LlmTornado.Chat.Models;
 using LlmTornado.Code;
 using Newtonsoft.Json;
@@ -40,8 +42,12 @@ namespace TornadoViews
                  }
              );
 
+            // Create a ChatRuntime with SingletonRuntimeConfiguration
+            var runtimeConfig = new SingletonRuntimeConfiguration(agent);
+            var runtime = new ChatRuntime(runtimeConfig);
+
             var controller = new AgentChatController(chat);
-            controller.AttachAgent(agent);
+            controller.AttachRuntime(runtime);
 
             Application.Run(form);
         }

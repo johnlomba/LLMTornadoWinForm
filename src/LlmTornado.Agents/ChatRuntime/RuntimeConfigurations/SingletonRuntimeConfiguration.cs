@@ -60,6 +60,7 @@ public class SingletonRuntimeConfiguration : IRuntimeConfiguration
                 OnRuntimeEvent?.Invoke(new ChatRuntimeAgentRunnerEvents(sEvent, Runtime.Id));
                 return Threading.ValueTaskCompleted;
             },
+            toolPermissionHandle: OnRuntimeRequestEvent,
             cancellationToken: cancellationToken
             );
 

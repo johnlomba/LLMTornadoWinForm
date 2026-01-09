@@ -87,7 +87,8 @@ namespace TornadoViews
                 ScrollBars = RichTextBoxScrollBars.Vertical,
                 BackColor = SystemColors.Window,
                 Dock = DockStyle.Top,
-                Width = 600
+                Width = 600,
+                Font = new Font("Segoe UI", 9.75f, FontStyle.Regular)
             };
 
             // Tool call panel (replaces simple label)

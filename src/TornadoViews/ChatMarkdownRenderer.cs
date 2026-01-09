@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
@@ -14,14 +15,15 @@ namespace TornadoViews
     /// </summary>
     public static class ChatMarkdownRenderer
     {
-        private static readonly Regex BoldItalicPattern = new(@"\*\*\*(.+?)\*\*\*", RegexOptions.Compiled);
-        private static readonly Regex BoldPattern = new(@"\*\*(.+?)\*\*", RegexOptions.Compiled);
-        private static readonly Regex ItalicPattern = new(@"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", RegexOptions.Compiled);
-        private static readonly Regex ItalicUnderscorePattern = new(@"(?<!_)_(?!_)(.+?)(?<!_)_(?!_)", RegexOptions.Compiled);
-        private static readonly Regex StrikethroughPattern = new(@"~~(.+?)~~", RegexOptions.Compiled);
-        private static readonly Regex InlineCodePattern = new(@"`([^`]+)`", RegexOptions.Compiled);
-        private static readonly Regex LinkPattern = new(@"\[([^\]]+)\]\(([^)]+)\)", RegexOptions.Compiled);
-        private static readonly Regex OrderedListPattern = new(@"^\d+\.\s+(.*)$", RegexOptions.Compiled);
+        // Pre-compiled regex patterns for inline formatting
+        private static readonly Regex BoldItalicRegex = new Regex(@"\*\*\*(.+?)\*\*\*", RegexOptions.Compiled);
+        private static readonly Regex BoldRegex = new Regex(@"\*\*(.+?)\*\*", RegexOptions.Compiled);
+        private static readonly Regex ItalicRegex = new Regex(@"\*([^*]+)\*", RegexOptions.Compiled);
+        private static readonly Regex ItalicUnderscoreRegex = new Regex(@"_([^_]+)_", RegexOptions.Compiled);
+        private static readonly Regex StrikeRegex = new Regex(@"~~(.+?)~~", RegexOptions.Compiled);
+        private static readonly Regex CodeRegex = new Regex(@"`([^`]+)`", RegexOptions.Compiled);
+        private static readonly Regex LinkRegex = new Regex(@"\[([^\]]+)\]\(([^)]+)\)", RegexOptions.Compiled);
+        private static readonly Regex OrderedListRegex = new Regex(@"^(\d+)\.\s+(.*)$", RegexOptions.Compiled);
 
         public static void RenderToRichTextBox(RichTextBox rtb, string markdown)
         {
@@ -32,15 +34,24 @@ namespace TornadoViews
             rtb.Clear();
 
             var lines = markdown.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
+            
+            // Use a font family that supports all styles
+            var baseFontFamily = rtb.Font.FontFamily;
+            var baseSize = rtb.Font.Size;
+            
+            // Create fonts
             var defaultFont = rtb.Font;
-            var boldFont = new Font(defaultFont, FontStyle.Bold);
-            var italicFont = new Font(defaultFont, FontStyle.Italic);
-            var boldItalicFont = new Font(defaultFont, FontStyle.Bold | FontStyle.Italic);
-            var strikeFont = new Font(defaultFont, FontStyle.Strikeout);
-            var codeFont = new Font(FontFamily.GenericMonospace, defaultFont.Size);
-            var h1Font = new Font(defaultFont.FontFamily, defaultFont.Size + 6, FontStyle.Bold);
-            var h2Font = new Font(defaultFont.FontFamily, defaultFont.Size + 4, FontStyle.Bold);
-            var h3Font = new Font(defaultFont.FontFamily, defaultFont.Size + 2, FontStyle.Bold);
+            var boldFont = CreateFontSafe(baseFontFamily, baseSize, FontStyle.Bold, defaultFont);
+            var italicFont = CreateFontSafe(baseFontFamily, baseSize, FontStyle.Italic, defaultFont);
+            var boldItalicFont = CreateFontSafe(baseFontFamily, baseSize, FontStyle.Bold | FontStyle.Italic, defaultFont);
+            var strikeFont = CreateFontSafe(baseFontFamily, baseSize, FontStyle.Strikeout, defaultFont);
+            var codeFont = new Font(FontFamily.GenericMonospace, baseSize, FontStyle.Regular);
+            var h1Font = CreateFontSafe(baseFontFamily, baseSize + 6, FontStyle.Bold, defaultFont);
+            var h2Font = CreateFontSafe(baseFontFamily, baseSize + 4, FontStyle.Bold, defaultFont);
+            var h3Font = CreateFontSafe(baseFontFamily, baseSize + 2, FontStyle.Bold, defaultFont);
+            var linkFont = CreateFontSafe(baseFontFamily, baseSize, FontStyle.Underline, defaultFont);
+
+            var fonts = new FontSet(defaultFont, boldFont, italicFont, boldItalicFont, strikeFont, codeFont, linkFont);
 
             bool inCodeBlock = false;
             bool firstLine = true;
@@ -49,6 +60,7 @@ namespace TornadoViews
             {
                 string line = rawLine;
 
+                // Code block toggle
                 if (line.TrimStart().StartsWith("```"))
                 {
                     inCodeBlock = !inCodeBlock;
@@ -61,6 +73,7 @@ namespace TornadoViews
                 }
                 firstLine = false;
 
+                // Inside code block - no formatting
                 if (inCodeBlock)
                 {
                     AppendText(rtb, line, codeFont, Color.FromArgb(40, 40, 40), Color.FromArgb(245, 245, 245));
@@ -88,49 +101,48 @@ namespace TornadoViews
                 if (line.StartsWith("> "))
                 {
                     AppendText(rtb, "│ ", defaultFont, Color.Gray, rtb.BackColor);
-                    RenderInlineFormatting(rtb, line.Substring(2), defaultFont, boldFont, italicFont, boldItalicFont, strikeFont, codeFont);
+                    RenderInlineFormatting(rtb, line.Substring(2), fonts);
                     continue;
                 }
                 if (line.StartsWith(">"))
                 {
                     AppendText(rtb, "│ ", defaultFont, Color.Gray, rtb.BackColor);
-                    RenderInlineFormatting(rtb, line.Substring(1), defaultFont, boldFont, italicFont, boldItalicFont, strikeFont, codeFont);
-                    continue;
-                }
-
-                // Unordered lists
-                if (line.StartsWith("- ") || line.StartsWith("* "))
-                {
-                    rtb.AppendText("  • ");
-                    RenderInlineFormatting(rtb, line.Substring(2), defaultFont, boldFont, italicFont, boldItalicFont, strikeFont, codeFont);
+                    RenderInlineFormatting(rtb, line.Substring(1), fonts);
                     continue;
                 }
 
                 // Nested unordered lists
                 if (line.StartsWith("  - ") || line.StartsWith("  * "))
                 {
-                    rtb.AppendText("    ◦ ");
-                    RenderInlineFormatting(rtb, line.Substring(4), defaultFont, boldFont, italicFont, boldItalicFont, strikeFont, codeFont);
+                    AppendText(rtb, "    ◦ ", defaultFont, rtb.ForeColor, rtb.BackColor);
+                    RenderInlineFormatting(rtb, line.Substring(4), fonts);
+                    continue;
+                }
+
+                // Unordered lists
+                if (line.StartsWith("- ") || line.StartsWith("* "))
+                {
+                    AppendText(rtb, "  • ", defaultFont, rtb.ForeColor, rtb.BackColor);
+                    RenderInlineFormatting(rtb, line.Substring(2), fonts);
                     continue;
                 }
 
                 // Ordered lists
-                var orderedMatch = OrderedListPattern.Match(line);
+                var orderedMatch = OrderedListRegex.Match(line);
                 if (orderedMatch.Success)
                 {
-                    var prefix = line.Substring(0, line.IndexOf('.') + 1);
-                    rtb.AppendText($"  {prefix} ");
-                    RenderInlineFormatting(rtb, orderedMatch.Groups[1].Value, defaultFont, boldFont, italicFont, boldItalicFont, strikeFont, codeFont);
+                    AppendText(rtb, $"  {orderedMatch.Groups[1].Value}. ", defaultFont, rtb.ForeColor, rtb.BackColor);
+                    RenderInlineFormatting(rtb, orderedMatch.Groups[2].Value, fonts);
                     continue;
                 }
 
-                // Table separator line (skip rendering)
+                // Table separator line (skip)
                 if (line.TrimStart().StartsWith("|") && line.Contains("-"))
                 {
-                    var stripped = line.Replace("|", "").Replace("-", "").Replace(" ", "");
+                    var stripped = line.Replace("|", "").Replace("-", "").Replace(" ", "").Replace(":", "");
                     if (string.IsNullOrEmpty(stripped))
                     {
-                        continue; // Skip table separator lines like | --- | --- |
+                        continue;
                     }
                 }
 
@@ -141,132 +153,173 @@ namespace TornadoViews
                     foreach (var cell in cells)
                     {
                         AppendText(rtb, "│ ", defaultFont, Color.Gray, rtb.BackColor);
-                        RenderInlineFormatting(rtb, cell.Trim(), defaultFont, boldFont, italicFont, boldItalicFont, strikeFont, codeFont);
+                        RenderInlineFormatting(rtb, cell.Trim(), fonts);
                         AppendText(rtb, " ", defaultFont, rtb.ForeColor, rtb.BackColor);
                     }
                     AppendText(rtb, "│", defaultFont, Color.Gray, rtb.BackColor);
                     continue;
                 }
 
-                RenderInlineFormatting(rtb, line, defaultFont, boldFont, italicFont, boldItalicFont, strikeFont, codeFont);
+                // Regular line with inline formatting
+                RenderInlineFormatting(rtb, line, fonts);
             }
 
             rtb.ResumeLayout();
         }
 
-        private static void RenderInlineFormatting(RichTextBox rtb, string text, Font defaultFont, Font boldFont, Font italicFont, Font boldItalicFont, Font strikeFont, Font codeFont)
+        private record FontSet(Font Default, Font Bold, Font Italic, Font BoldItalic, Font Strike, Font Code, Font Link);
+
+        private static Font CreateFontSafe(FontFamily family, float size, FontStyle style, Font fallback)
         {
-            int pos = 0;
-
-            while (pos < text.Length)
+            try
             {
-                var boldItalicMatch = BoldItalicPattern.Match(text, pos);
-                var boldMatch = BoldPattern.Match(text, pos);
-                var italicMatch = ItalicPattern.Match(text, pos);
-                var italicUnderscoreMatch = ItalicUnderscorePattern.Match(text, pos);
-                var strikeMatch = StrikethroughPattern.Match(text, pos);
-                var codeMatch = InlineCodePattern.Match(text, pos);
-                var linkMatch = LinkPattern.Match(text, pos);
+                if (family.IsStyleAvailable(style))
+                {
+                    return new Font(family, size, style);
+                }
+                return new Font(FontFamily.GenericSansSerif, size, style);
+            }
+            catch
+            {
+                return fallback;
+            }
+        }
 
-                // Find the earliest match
-                Match? nextMatch = null;
-                string matchType = "";
-                int earliestIndex = int.MaxValue;
+        private static void RenderInlineFormatting(RichTextBox rtb, string text, FontSet fonts)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return;
+            }
 
-                if (boldItalicMatch.Success && boldItalicMatch.Index < earliestIndex)
+            // Process text character by character, looking for markdown patterns
+            int i = 0;
+            while (i < text.Length)
+            {
+                // Check for bold+italic (***text***)
+                if (i + 2 < text.Length && text.Substring(i, 3) == "***")
                 {
-                    earliestIndex = boldItalicMatch.Index;
-                    nextMatch = boldItalicMatch;
-                    matchType = "bolditalic";
-                }
-                if (boldMatch.Success && boldMatch.Index < earliestIndex)
-                {
-                    earliestIndex = boldMatch.Index;
-                    nextMatch = boldMatch;
-                    matchType = "bold";
-                }
-                if (italicMatch.Success && italicMatch.Index < earliestIndex)
-                {
-                    earliestIndex = italicMatch.Index;
-                    nextMatch = italicMatch;
-                    matchType = "italic";
-                }
-                if (italicUnderscoreMatch.Success && italicUnderscoreMatch.Index < earliestIndex)
-                {
-                    earliestIndex = italicUnderscoreMatch.Index;
-                    nextMatch = italicUnderscoreMatch;
-                    matchType = "italic";
-                }
-                if (strikeMatch.Success && strikeMatch.Index < earliestIndex)
-                {
-                    earliestIndex = strikeMatch.Index;
-                    nextMatch = strikeMatch;
-                    matchType = "strike";
-                }
-                if (codeMatch.Success && codeMatch.Index < earliestIndex)
-                {
-                    earliestIndex = codeMatch.Index;
-                    nextMatch = codeMatch;
-                    matchType = "code";
-                }
-                if (linkMatch.Success && linkMatch.Index < earliestIndex)
-                {
-                    earliestIndex = linkMatch.Index;
-                    nextMatch = linkMatch;
-                    matchType = "link";
+                    int end = text.IndexOf("***", i + 3);
+                    if (end > i + 3)
+                    {
+                        string content = text.Substring(i + 3, end - i - 3);
+                        AppendText(rtb, content, fonts.BoldItalic, rtb.ForeColor, rtb.BackColor);
+                        i = end + 3;
+                        continue;
+                    }
                 }
 
-                if (nextMatch == null)
+                // Check for bold (**text**)
+                if (i + 1 < text.Length && text.Substring(i, 2) == "**")
                 {
-                    AppendText(rtb, text.Substring(pos), defaultFont, rtb.ForeColor, rtb.BackColor);
-                    break;
+                    int end = text.IndexOf("**", i + 2);
+                    if (end > i + 2)
+                    {
+                        string content = text.Substring(i + 2, end - i - 2);
+                        AppendText(rtb, content, fonts.Bold, rtb.ForeColor, rtb.BackColor);
+                        i = end + 2;
+                        continue;
+                    }
                 }
 
-                if (nextMatch.Index > pos)
+                // Check for strikethrough (~~text~~)
+                if (i + 1 < text.Length && text.Substring(i, 2) == "~~")
                 {
-                    AppendText(rtb, text.Substring(pos, nextMatch.Index - pos), defaultFont, rtb.ForeColor, rtb.BackColor);
+                    int end = text.IndexOf("~~", i + 2);
+                    if (end > i + 2)
+                    {
+                        string content = text.Substring(i + 2, end - i - 2);
+                        AppendText(rtb, content, fonts.Strike, rtb.ForeColor, rtb.BackColor);
+                        i = end + 2;
+                        continue;
+                    }
                 }
 
-                switch (matchType)
+                // Check for inline code (`code`)
+                if (text[i] == '`')
                 {
-                    case "bolditalic":
-                        AppendText(rtb, nextMatch.Groups[1].Value, boldItalicFont, rtb.ForeColor, rtb.BackColor);
-                        break;
-                    case "bold":
-                        AppendText(rtb, nextMatch.Groups[1].Value, boldFont, rtb.ForeColor, rtb.BackColor);
-                        break;
-                    case "italic":
-                        AppendText(rtb, nextMatch.Groups[1].Value, italicFont, rtb.ForeColor, rtb.BackColor);
-                        break;
-                    case "strike":
-                        AppendText(rtb, nextMatch.Groups[1].Value, strikeFont, rtb.ForeColor, rtb.BackColor);
-                        break;
-                    case "code":
-                        AppendText(rtb, nextMatch.Groups[1].Value, codeFont, Color.FromArgb(40, 40, 40), Color.FromArgb(230, 230, 230));
-                        break;
-                    case "link":
-                        // Render link text in blue with underline
-                        var linkText = nextMatch.Groups[1].Value;
-                        var linkFont = new Font(defaultFont, FontStyle.Underline);
-                        AppendText(rtb, linkText, linkFont, Color.Blue, rtb.BackColor);
-                        break;
+                    int end = text.IndexOf('`', i + 1);
+                    if (end > i + 1)
+                    {
+                        string content = text.Substring(i + 1, end - i - 1);
+                        AppendText(rtb, content, fonts.Code, Color.FromArgb(40, 40, 40), Color.FromArgb(230, 230, 230));
+                        i = end + 1;
+                        continue;
+                    }
                 }
 
-                pos = nextMatch.Index + nextMatch.Length;
+                // Check for link ([text](url))
+                if (text[i] == '[')
+                {
+                    int closeBracket = text.IndexOf(']', i + 1);
+                    if (closeBracket > i + 1 && closeBracket + 1 < text.Length && text[closeBracket + 1] == '(')
+                    {
+                        int closeParen = text.IndexOf(')', closeBracket + 2);
+                        if (closeParen > closeBracket + 2)
+                        {
+                            string linkText = text.Substring(i + 1, closeBracket - i - 1);
+                            AppendText(rtb, linkText, fonts.Link, Color.Blue, rtb.BackColor);
+                            i = closeParen + 1;
+                            continue;
+                        }
+                    }
+                }
+
+                // Check for italic (*text* or _text_) - must check after ** to avoid conflict
+                if (text[i] == '*' && (i + 1 >= text.Length || text[i + 1] != '*'))
+                {
+                    int end = -1;
+                    for (int j = i + 1; j < text.Length; j++)
+                    {
+                        if (text[j] == '*' && (j + 1 >= text.Length || text[j + 1] != '*') && (j == 0 || text[j - 1] != '*'))
+                        {
+                            end = j;
+                            break;
+                        }
+                    }
+                    if (end > i + 1)
+                    {
+                        string content = text.Substring(i + 1, end - i - 1);
+                        AppendText(rtb, content, fonts.Italic, rtb.ForeColor, rtb.BackColor);
+                        i = end + 1;
+                        continue;
+                    }
+                }
+
+                if (text[i] == '_')
+                {
+                    int end = text.IndexOf('_', i + 1);
+                    if (end > i + 1)
+                    {
+                        string content = text.Substring(i + 1, end - i - 1);
+                        AppendText(rtb, content, fonts.Italic, rtb.ForeColor, rtb.BackColor);
+                        i = end + 1;
+                        continue;
+                    }
+                }
+
+                // No pattern matched - append single character
+                AppendText(rtb, text[i].ToString(), fonts.Default, rtb.ForeColor, rtb.BackColor);
+                i++;
             }
         }
 
         private static void AppendText(RichTextBox rtb, string text, Font font, Color foreColor, Color backColor)
         {
+            if (string.IsNullOrEmpty(text)) return;
+            
             int start = rtb.TextLength;
             rtb.AppendText(text);
             int end = rtb.TextLength;
 
-            rtb.Select(start, end - start);
-            rtb.SelectionFont = font;
-            rtb.SelectionColor = foreColor;
-            rtb.SelectionBackColor = backColor;
-            rtb.Select(end, 0);
+            if (end > start)
+            {
+                rtb.Select(start, end - start);
+                rtb.SelectionFont = font;
+                rtb.SelectionColor = foreColor;
+                rtb.SelectionBackColor = backColor;
+                rtb.SelectionLength = 0;
+            }
         }
     }
 }

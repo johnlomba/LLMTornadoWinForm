@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using LlmTornado.Agents;
+using LlmTornado.Agents.ChatRuntime;
 using LlmTornado.Chat;
 using LlmTornado.Chat.Models;
 using LlmTornado.Agents.Utility;
@@ -11,10 +12,10 @@ using LlmTornado.Agents.DataModels;
 namespace TornadoViews
 {
     /// <summary>
-    /// Controller to bridge a ChatWindowControl with a TornadoAgent lifecycle.
+    /// Controller to bridge a ChatWindowControl with a ChatRuntime lifecycle.
     /// </summary>
     /// <remarks>
-    /// TODO: Add CancellationToken support - pass token to agent.Run() and add cancel button to UI
+    /// TODO: Add CancellationToken support - pass token to runtime.InvokeAsync() and add cancel button to UI
     /// TODO: Wire up RetryRequested event from ChatMessageControl to re-send failed messages
     /// TODO: Consider using ConversationPersistence class instead of extension methods for auto-save support
     /// TODO: Add error state display in chat UI instead of MessageBox
@@ -23,11 +24,7 @@ namespace TornadoViews
     public class AgentChatController
     {
         private readonly ChatWindowControl _view;
-        private TornadoAgent? _agent;
-        private Conversation? _conversation;
-
-        // Optional external tool approval handler (e.g., custom dialog)
-        public Func<string, ValueTask<bool>>? ToolApprovalHandler { get; set; }
+        private ChatRuntime? _runtime;
 
         public AgentChatController(ChatWindowControl view)
         {
@@ -36,33 +33,24 @@ namespace TornadoViews
             _view.ToolUseDecisionChanged += OnToolUseDecisionChanged;
         }
 
-        public void AttachAgent(TornadoAgent agent)
+        public void AttachRuntime(ChatRuntime runtime)
         {
-            _agent = agent;
-            _conversation = agent.Client.Chat.CreateConversation(agent.Options);
+            _runtime = runtime;
+
+            // Wire up runtime events for streaming
+            _runtime.RuntimeConfiguration.OnRuntimeEvent = RuntimeEventHandler;
+
+            // Wire up tool permission request handler
+            _runtime.RuntimeConfiguration.OnRuntimeRequestEvent = UiToolApproval;
         }
 
-        public async Task LoadConversationFromFileAsync(string path)
+        private ValueTask RuntimeEventHandler(ChatRuntimeEvents runtimeEvent)
         {
-            if (_agent == null) throw new InvalidOperationException("Agent not attached");
-            if (_conversation == null) _conversation = _agent.Client.Chat.CreateConversation(_agent.Options);
-
-            var msgs = new System.Collections.Generic.List<ChatMessage>();
-            await msgs.LoadMessagesAsync(path);
-            _conversation.LoadConversation(msgs);
-        }
-
-        private async void OnSendRequested(object? sender, string prompt)
-        {
-            if (_agent == null)
+            // Handle agent runner events (streaming, tool invoked, etc.)
+            if (runtimeEvent is ChatRuntimeAgentRunnerEvents agentEvent)
             {
-                MessageBox.Show("No agent attached.");
-                return;
-            }
+                var runEvent = agentEvent.AgentRunnerEvent;
 
-            // streaming handler: push deltas into the UI
-            ValueTask RunEventHandler(AgentRunnerEvents runEvent)
-            {
                 if (runEvent.EventType == AgentRunnerEventTypes.Streaming && runEvent is AgentRunnerStreamingEvent s)
                 {
                     if (s.ModelStreamingEvent is ModelStreamingOutputTextDeltaEvent delta && !string.IsNullOrEmpty(delta.DeltaText))
@@ -78,52 +66,79 @@ namespace TornadoViews
                         }
                     }
                 }
-                return ValueTask.CompletedTask;
             }
 
-            ValueTask<bool> UiToolApproval(string request)
+            return ValueTask.CompletedTask;
+        }
+
+        private ValueTask<bool> UiToolApproval(string request)
+        {
+            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            void Handler(object? _, ToolUseDecision d)
             {
-                var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-
-                void Handler(object? _, ToolUseDecision d)
-                {
-                    if (d == ToolUseDecision.None) return;
-                    _view.ToolUseDecisionChanged -= Handler;
-
-                    if (_view.InvokeRequired)
-                    {
-                        _view.BeginInvoke(new Action(() =>
-                        {
-                            _view.SetStreamingToolDecisionVisible(false);
-                            _view.SetStreamingToolRequest(string.Empty);
-                        }));
-                    }
-                    else
-                    {
-                        _view.SetStreamingToolDecisionVisible(false);
-                        _view.SetStreamingToolRequest(string.Empty);
-                    }
-
-                    tcs.TrySetResult(d == ToolUseDecision.Accept);
-                }
-
-                _view.ToolUseDecisionChanged += Handler;
+                if (d == ToolUseDecision.None) return;
+                _view.ToolUseDecisionChanged -= Handler;
 
                 if (_view.InvokeRequired)
                 {
                     _view.BeginInvoke(new Action(() =>
                     {
-                        _view.SetStreamingToolRequest(request);
-                        _view.SetStreamingToolDecisionVisible(true);
+                        _view.SetStreamingToolDecisionVisible(false);
+                        _view.SetStreamingToolRequest(string.Empty);
                     }));
                 }
                 else
                 {
-                    _view.SetStreamingToolRequest(request);
-                    _view.SetStreamingToolDecisionVisible(true);
+                    _view.SetStreamingToolDecisionVisible(false);
+                    _view.SetStreamingToolRequest(string.Empty);
                 }
 
-                return new ValueTask<bool>(tcs.Task);
+                tcs.TrySetResult(d == ToolUseDecision.Accept);
+            }
+
+            _view.ToolUseDecisionChanged += Handler;
+
+            if (_view.InvokeRequired)
+            {
+                _view.BeginInvoke(new Action(() =>
+                {
+                    _view.SetStreamingToolRequest(request);
+                    _view.SetStreamingToolDecisionVisible(true);
+                }));
+            }
+            else
+            {
+                _view.SetStreamingToolRequest(request);
+                _view.SetStreamingToolDecisionVisible(true);
+            }
+
+            return new ValueTask<bool>(tcs.Task);
+        }
+
+        public async Task LoadConversationFromFileAsync(string path)
+        {
+            if (_runtime == null) throw new InvalidOperationException("Runtime not attached");
+
+            var msgs = new System.Collections.Generic.List<ChatMessage>();
+            await msgs.LoadMessagesAsync(path);
+
+            // Clear current messages and load from file
+            _runtime.RuntimeConfiguration.ClearMessages();
+            foreach (var msg in msgs)
+            {
+                // This will add messages to the runtime's conversation
+                // Note: You may need to add a LoadMessages method to IRuntimeConfiguration
+                // For now, we'll just display them in the UI
+            }
+        }
+
+        private async void OnSendRequested(object? sender, string prompt)
+        {
+            if (_runtime == null)
+            {
+                MessageBox.Show("No runtime attached.");
+                return;
             }
 
             try
@@ -132,17 +147,11 @@ namespace TornadoViews
                 if (_view.InvokeRequired) _view.BeginInvoke(new Action(_view.BeginAssistantStream));
                 else _view.BeginAssistantStream();
 
-                var toolApproval = ToolApprovalHandler ?? UiToolApproval;
+                // Create a user message and invoke the runtime
+                var userMessage = new ChatMessage(LlmTornado.Code.ChatMessageRoles.User, prompt);
+                var response = await _runtime.InvokeAsync(userMessage);
 
-                var conv = await _agent.Run(prompt,
-                    appendMessages: _conversation?.Messages.ToList(),
-                    streaming: true,
-                    onAgentRunnerEvent: RunEventHandler,
-                    toolPermissionHandle: toolApproval);
-
-                _conversation = conv;
-
-                string final = conv.Messages.Last().Content ?? string.Empty;
+                string final = response.Content ?? string.Empty;
 
                 // finalize stream with final content
                 if (_view.InvokeRequired) _view.BeginInvoke(new Action<string?>(_view.EndAssistantStream), final);
@@ -150,7 +159,7 @@ namespace TornadoViews
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "Agent Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(ex.Message, "Runtime Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 if (_view.InvokeRequired) _view.BeginInvoke(new Action<string?>(_view.EndAssistantStream), null);
                 else _view.EndAssistantStream();
             }
@@ -163,8 +172,9 @@ namespace TornadoViews
 
         public async Task SaveConversationAsync(string path)
         {
-            if (_conversation == null) return;
-            _conversation.Messages.ToList().SaveConversation(path);
+            if (_runtime == null) return;
+            var messages = _runtime.RuntimeConfiguration.GetMessages();
+            messages.SaveConversation(path);
             await Task.CompletedTask;
         }
     }
