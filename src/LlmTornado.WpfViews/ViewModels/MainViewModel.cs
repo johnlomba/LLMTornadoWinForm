@@ -43,6 +43,12 @@ public partial class MainViewModel : ObservableObject
     private PromptTemplateViewModel _promptTemplateViewModel;
     
     [ObservableProperty]
+    private ToolApprovalViewModel _toolApprovalViewModel;
+    
+    [ObservableProperty]
+    private bool _isToolApprovalOpen;
+    
+    [ObservableProperty]
     private bool _isInitialized;
     
     [ObservableProperty]
@@ -75,10 +81,13 @@ public partial class MainViewModel : ObservableObject
         ChatViewModel = new ChatViewModel(chatService, conversationStore);
         SettingsViewModel = new SettingsViewModel(conversationStore);
         PromptTemplateViewModel = new PromptTemplateViewModel(promptTemplateService);
+        ToolApprovalViewModel = new ToolApprovalViewModel();
         
         SettingsViewModel.SettingsSaved += OnSettingsSaved;
         ChatViewModel.ConversationSaved += OnConversationSaved;
+        ChatViewModel.ToolApprovalRequested += OnToolApprovalRequested;
         PromptTemplateViewModel.TemplatesUpdated += OnTemplatesUpdated;
+        ToolApprovalViewModel.DialogClosed += OnToolApprovalDialogClosed;
     }
     
     /// <summary>
@@ -307,6 +316,32 @@ public partial class MainViewModel : ObservableObject
         await ConnectAsync();
         
         CloseSettings();
+    }
+    
+    /// <summary>
+    /// Handles tool approval being requested.
+    /// </summary>
+    private void OnToolApprovalRequested(ToolCallRequest request)
+    {
+        ToolApprovalViewModel.ShowRequest(request);
+        IsToolApprovalOpen = true;
+    }
+    
+    /// <summary>
+    /// Handles tool approval dialog being closed.
+    /// </summary>
+    private void OnToolApprovalDialogClosed()
+    {
+        IsToolApprovalOpen = false;
+    }
+    
+    /// <summary>
+    /// Closes the tool approval dialog.
+    /// </summary>
+    [RelayCommand]
+    public void CloseToolApproval()
+    {
+        IsToolApprovalOpen = false;
     }
 }
 

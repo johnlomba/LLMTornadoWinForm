@@ -47,10 +47,21 @@ public partial class ChatViewModel : ObservableObject
     [ObservableProperty]
     private string _systemPromptContent = string.Empty;
     
+    [ObservableProperty]
+    private ToolCallRequest? _pendingToolCall;
+    
+    [ObservableProperty]
+    private bool _isToolApprovalVisible;
+    
     /// <summary>
     /// Collection of messages in the current conversation.
     /// </summary>
     public ObservableCollection<MessageViewModel> Messages { get; } = [];
+    
+    /// <summary>
+    /// History of tool calls in this session.
+    /// </summary>
+    public ObservableCollection<ToolCallRequest> ToolCallHistory { get; } = [];
     
     /// <summary>
     /// Event raised when scrolling to bottom is requested.
@@ -61,6 +72,11 @@ public partial class ChatViewModel : ObservableObject
     /// Event raised when conversation is saved (for refreshing the list).
     /// </summary>
     public event Action? ConversationSaved;
+    
+    /// <summary>
+    /// Event raised when a tool approval is requested.
+    /// </summary>
+    public event Action<ToolCallRequest>? ToolApprovalRequested;
     
     public ChatViewModel(ChatService chatService, ConversationStore conversationStore)
     {
@@ -74,6 +90,8 @@ public partial class ChatViewModel : ObservableObject
         _chatService.OnProcessingError += OnProcessingError;
         _chatService.OnProcessingCancelled += OnProcessingCancelled;
         _chatService.OnUsageReceived += OnUsageReceived;
+        _chatService.OnToolApprovalRequired += OnToolApprovalRequired;
+        _chatService.OnToolCompleted += OnToolCompleted;
     }
     
     /// <summary>
@@ -317,6 +335,73 @@ public partial class ChatViewModel : ObservableObject
                 _currentStreamingMessage.TokenCount = outputTokens;
             }
         });
+    }
+    
+    private void OnToolApprovalRequired(ToolCallRequest request)
+    {
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            // Add to history
+            ToolCallHistory.Insert(0, request);
+            
+            // Set as pending for display
+            PendingToolCall = request;
+            IsToolApprovalVisible = true;
+            
+            // Update status
+            StatusText = $"Tool called: {request.ToolName}";
+            
+            // Raise event for the main view model to show dialog
+            ToolApprovalRequested?.Invoke(request);
+            
+            // Add tool call indicator to the streaming message
+            if (_currentStreamingMessage != null)
+            {
+                _currentStreamingMessage.AppendContent($"\n\n🔧 **Tool: {request.ToolName}**\n");
+            }
+        });
+    }
+    
+    private void OnToolCompleted(string toolName, string result)
+    {
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            // Update the request in history
+            var request = ToolCallHistory.FirstOrDefault(r => r.ToolName == toolName && r.Status == ToolApprovalStatus.Approved);
+            if (request != null)
+            {
+                request.Status = ToolApprovalStatus.Completed;
+                request.Result = result;
+            }
+            
+            // Update streaming message with result preview
+            if (_currentStreamingMessage != null)
+            {
+                var preview = result.Length > 200 ? result[..200] + "..." : result;
+                _currentStreamingMessage.AppendContent($"```\n{preview}\n```\n\n");
+            }
+            
+            IsToolApprovalVisible = false;
+            PendingToolCall = null;
+        });
+    }
+    
+    /// <summary>
+    /// Clears the tool call history.
+    /// </summary>
+    [RelayCommand]
+    public void ClearToolHistory()
+    {
+        ToolCallHistory.Clear();
+    }
+    
+    /// <summary>
+    /// Dismisses the tool approval dialog.
+    /// </summary>
+    [RelayCommand]
+    public void DismissToolApproval()
+    {
+        IsToolApprovalVisible = false;
     }
     
     #endregion

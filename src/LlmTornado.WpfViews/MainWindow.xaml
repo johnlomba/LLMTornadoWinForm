@@ -207,6 +207,15 @@
                                         CloseRequested="PromptTemplateDialog_CloseRequested"
                                         TemplateSelected="PromptTemplateDialog_TemplateSelected" />
         </Grid>
+        
+        <!-- Tool Approval Dialog overlay -->
+        <Grid Grid.RowSpan="3"
+              Visibility="{Binding IsToolApprovalOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="#80000000" />
+            <views:ToolApprovalDialog DataContext="{Binding ToolApprovalViewModel}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center" />
+        </Grid>
     </Grid>
 </Window>
 
