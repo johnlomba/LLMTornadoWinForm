@@ -104,6 +104,7 @@ public class ChatService
     {
         // Build list of provider authentications from settings
         var authList = new List<ProviderAuthentication>();
+        TornadoApi? customApi = null;
         
         foreach (var kvp in settings.ApiKeys)
         {
@@ -117,20 +118,55 @@ public class ChatService
                         authList.Add(new ProviderAuthentication(kvp.Key, kvp.Value, settings.AzureOrganization));
                     }
                 }
-                else
+                else if (kvp.Key != LLmProviders.Custom)
                 {
                     authList.Add(new ProviderAuthentication(kvp.Key, kvp.Value));
                 }
             }
         }
         
-        if (authList.Count == 0)
+        // Handle Custom provider separately (requires endpoint URL)
+        if (settings.CustomEndpoints.TryGetValue(LLmProviders.Custom, out var customEndpoint) && 
+            !string.IsNullOrWhiteSpace(customEndpoint))
         {
-            throw new InvalidOperationException("At least one provider API key must be configured.");
+            if (Uri.TryCreate(customEndpoint, UriKind.Absolute, out var customUri))
+            {
+                // Create a separate TornadoApi for custom provider with endpoint
+                var customApiKey = settings.ApiKeys.TryGetValue(LLmProviders.Custom, out var key) && !string.IsNullOrWhiteSpace(key) 
+                    ? key 
+                    : string.Empty;
+                
+                customApi = new TornadoApi(customUri, customApiKey, LLmProviders.Custom);
+            }
         }
         
-        // Create the TornadoApi instance with multiple providers (like demo's ConnectMulti)
-        _api = new TornadoApi(authList);
+        // Create the main TornadoApi instance with multiple providers (like demo's ConnectMulti)
+        if (authList.Count > 0)
+        {
+            _api = new TornadoApi(authList);
+            
+            // If we have a custom API, merge it into the main API
+            if (customApi != null)
+            {
+                // Copy custom endpoint configuration
+                _api.ApiUrlFormat = customApi.ApiUrlFormat;
+                
+                // Add custom authentication if present
+                if (customApi.Authentications.TryGetValue(LLmProviders.Custom, out var customAuth))
+                {
+                    _api.Authentications.TryAdd(LLmProviders.Custom, customAuth);
+                }
+            }
+        }
+        else if (customApi != null)
+        {
+            // Only custom provider configured
+            _api = customApi;
+        }
+        else
+        {
+            throw new InvalidOperationException("At least one provider must be configured (API key or custom endpoint).");
+        }
         
         // Determine the provider and model name for the selected model
         LLmProviders modelProvider = LLmProviders.OpenAi;

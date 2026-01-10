@@ -64,6 +64,7 @@ public class ModelDiscoveryService
         
         // Create a TornadoApi instance with all configured providers
         var authList = new List<ProviderAuthentication>();
+        TornadoApi? api = null;
         
         foreach (var kvp in settings.ApiKeys)
         {
@@ -77,23 +78,55 @@ public class ModelDiscoveryService
                         authList.Add(new ProviderAuthentication(kvp.Key, kvp.Value, settings.AzureOrganization));
                     }
                 }
-                else
+                else if (kvp.Key != LLmProviders.Custom)
                 {
                     authList.Add(new ProviderAuthentication(kvp.Key, kvp.Value));
                 }
             }
         }
         
-        if (authList.Count == 0)
+        // Handle Custom provider separately (requires endpoint URL)
+        if (settings.CustomEndpoints.TryGetValue(LLmProviders.Custom, out var customEndpoint) && 
+            !string.IsNullOrWhiteSpace(customEndpoint))
+        {
+            if (Uri.TryCreate(customEndpoint, UriKind.Absolute, out var customUri))
+            {
+                var customApiKey = settings.ApiKeys.TryGetValue(LLmProviders.Custom, out var key) && !string.IsNullOrWhiteSpace(key) 
+                    ? key 
+                    : string.Empty;
+                
+                var customApi = new TornadoApi(customUri, customApiKey, LLmProviders.Custom);
+                
+                if (authList.Count > 0)
+                {
+                    api = new TornadoApi(authList);
+                    // Merge custom API configuration
+                    api.ApiUrlFormat = customApi.ApiUrlFormat;
+                    if (customApi.Authentications.TryGetValue(LLmProviders.Custom, out var customAuth))
+                    {
+                        api.Authentications.TryAdd(LLmProviders.Custom, customAuth);
+                    }
+                }
+                else
+                {
+                    api = customApi;
+                }
+            }
+        }
+        else if (authList.Count > 0)
+        {
+            api = new TornadoApi(authList);
+        }
+        
+        if (api == null)
         {
             return allModels;
         }
         
-        var api = new TornadoApi(authList);
-        
         // Discover models from each configured provider
         var discoveryTasks = new List<Task<List<ModelOption>>>();
         
+        // Add providers from API keys
         foreach (var provider in settings.ApiKeys.Keys)
         {
             if (!string.IsNullOrWhiteSpace(settings.ApiKeys[provider]))
@@ -104,8 +137,21 @@ public class ModelDiscoveryService
                     continue;
                 }
                 
+                // Skip Custom - handled separately
+                if (provider == LLmProviders.Custom)
+                {
+                    continue;
+                }
+                
                 discoveryTasks.Add(DiscoverModelsAsync(api, provider));
             }
+        }
+        
+        // Add Custom provider if endpoint is configured
+        if (settings.CustomEndpoints.TryGetValue(LLmProviders.Custom, out var customEndpointUrl) && 
+            !string.IsNullOrWhiteSpace(customEndpointUrl))
+        {
+            discoveryTasks.Add(DiscoverModelsAsync(api, LLmProviders.Custom));
         }
         
         var results = await Task.WhenAll(discoveryTasks);

@@ -166,6 +166,12 @@ public partial class SettingsViewModel : ObservableObject
                 providerKey.AzureEndpoint = settings.AzureEndpoint ?? string.Empty;
                 providerKey.AzureOrganization = settings.AzureOrganization ?? string.Empty;
             }
+            
+            // Handle Custom provider endpoint
+            if (providerKey.IsCustom && settings.CustomEndpoints.TryGetValue(providerKey.Provider, out var customEndpoint))
+            {
+                providerKey.CustomEndpoint = customEndpoint;
+            }
         }
         
         // Load custom models
@@ -382,7 +388,7 @@ public partial class SettingsViewModel : ObservableObject
         
         if (!hasConfiguredProvider)
         {
-            ValidationError = "At least one provider API key must be configured.";
+            ValidationError = "At least one provider must be configured (API key or custom endpoint).";
             return false;
         }
         
@@ -425,9 +431,25 @@ public partial class SettingsViewModel : ObservableObject
         // Build API keys dictionary
         foreach (var providerKey in ProviderKeys)
         {
-            if (providerKey.IsConfigured)
+            if (providerKey.IsConfigured || providerKey.IsCustom)
             {
-                settings.ApiKeys[providerKey.Provider] = providerKey.ApiKey;
+                // For Custom provider, endpoint is required, API key is optional
+                if (providerKey.IsCustom)
+                {
+                    if (!string.IsNullOrWhiteSpace(providerKey.CustomEndpoint))
+                    {
+                        settings.CustomEndpoints[providerKey.Provider] = providerKey.CustomEndpoint;
+                        // API key is optional for custom providers
+                        if (!string.IsNullOrWhiteSpace(providerKey.ApiKey))
+                        {
+                            settings.ApiKeys[providerKey.Provider] = providerKey.ApiKey;
+                        }
+                    }
+                }
+                else
+                {
+                    settings.ApiKeys[providerKey.Provider] = providerKey.ApiKey;
+                }
                 
                 // Handle Azure special properties
                 if (providerKey.IsAzure)

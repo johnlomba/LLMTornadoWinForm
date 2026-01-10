@@ -17,6 +17,13 @@ public class SettingsModel
     public Dictionary<LLmProviders, string> ApiKeys { get; set; } = new();
     
     /// <summary>
+    /// Custom endpoints for self-hosted providers (like Ollama, LM Studio).
+    /// Key is the provider enum, value is the endpoint URL.
+    /// </summary>
+    [JsonConverter(typeof(DictionaryJsonConverter<LLmProviders, string>))]
+    public Dictionary<LLmProviders, string> CustomEndpoints { get; set; } = new();
+    
+    /// <summary>
     /// Azure OpenAI endpoint (if using Azure).
     /// </summary>
     public string? AzureEndpoint { get; set; }

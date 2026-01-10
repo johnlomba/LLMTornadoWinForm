@@ -146,8 +146,19 @@
                                         <!-- Expanded Content -->
                                         <StackPanel Margin="0,8,0,0"
                                                     Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibilityConverter}}">
-                                            <!-- API Key Field -->
-                                            <StackPanel Margin="0,0,0,12">
+                                            <!-- API Key Field (hidden for Custom and Azure providers) -->
+                                            <StackPanel Margin="0,0,0,12"
+                                                        Visibility="{Binding IsCustom, Converter={StaticResource InverseBoolConverter}}">
+                                                <StackPanel.Style>
+                                                    <Style TargetType="StackPanel">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsAzure}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </StackPanel.Style>
                                                 <TextBlock Text="API Key"
                                                            Foreground="#A6ADC8"
                                                            FontSize="11"
@@ -185,6 +196,42 @@
                                                     <TextBox Text="{Binding AzureOrganization, UpdateSourceTrigger=PropertyChanged}"
                                                              TextChanged="ProviderKey_TextChanged"
                                                              ui:ControlHelper.PlaceholderText="Organization ID (optional)"
+                                                             Background="#1E1E2E"
+                                                             Foreground="#CDD6F4"
+                                                             BorderBrush="#45475A"
+                                                             Padding="10,8" />
+                                                </StackPanel>
+                                            </StackPanel>
+                                            
+                                            <!-- Custom provider-specific fields -->
+                                            <StackPanel Visibility="{Binding IsCustom, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <StackPanel Margin="0,0,0,12">
+                                                    <TextBlock Text="Endpoint URL"
+                                                               Foreground="#A6ADC8"
+                                                               FontSize="11"
+                                                               Margin="0,0,0,4" />
+                                                    <TextBox Text="{Binding CustomEndpoint, UpdateSourceTrigger=PropertyChanged}"
+                                                             TextChanged="ProviderKey_TextChanged"
+                                                             ui:ControlHelper.PlaceholderText="http://localhost:11434 (Ollama) or http://localhost:1234 (LM Studio)"
+                                                             Background="#1E1E2E"
+                                                             Foreground="#CDD6F4"
+                                                             BorderBrush="#45475A"
+                                                             Padding="10,8" />
+                                                    <TextBlock Text="For Ollama: http://localhost:11434&#x0a;For LM Studio: http://localhost:1234&#x0a;For vLLM: http://localhost:8000"
+                                                               Foreground="#6C7086"
+                                                               FontSize="10"
+                                                               Margin="0,4,0,0"
+                                                               TextWrapping="Wrap" />
+                                                </StackPanel>
+                                                
+                                                <StackPanel Margin="0,0,0,12">
+                                                    <TextBlock Text="API Key (Optional)"
+                                                               Foreground="#A6ADC8"
+                                                               FontSize="11"
+                                                               Margin="0,0,0,4" />
+                                                    <TextBox Text="{Binding ApiKey, UpdateSourceTrigger=PropertyChanged}"
+                                                             TextChanged="ProviderKey_TextChanged"
+                                                             ui:ControlHelper.PlaceholderText="Leave empty if no authentication required"
                                                              Background="#1E1E2E"
                                                              Foreground="#CDD6F4"
                                                              BorderBrush="#45475A"
