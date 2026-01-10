@@ -29,6 +29,18 @@ public partial class AiQueryViewModel : ViewModelBase
     private readonly SavedSqlQueryService _savedSqlQueryService;
     private readonly Stopwatch _requestStopwatch = new();
     private MessageViewModel? _currentStreamingMessage;
+    
+    /// <summary>
+    /// Tracks tools that the user has chosen to always allow without prompting.
+    /// Key format: "toolName" or "serverLabel:toolName" for MCP tools.
+    /// </summary>
+    private readonly HashSet<string> _alwaysAllowedTools = new();
+    
+    /// <summary>
+    /// Tracks tools that the user has chosen to always deny without prompting.
+    /// Key format: "toolName" or "serverLabel:toolName" for MCP tools.
+    /// </summary>
+    private readonly HashSet<string> _alwaysDeniedTools = new();
 
     // Database Context
     [ObservableProperty]
@@ -296,9 +308,42 @@ public partial class AiQueryViewModel : ViewModelBase
     {
         Application.Current.Dispatcher.Invoke(() =>
         {
+            // Generate the tool key for tracking (with optional server label)
+            var toolKey = GetToolKey(request);
+            
+            // Check if this tool is always allowed
+            if (_alwaysAllowedTools.Contains(toolKey))
+            {
+                request.Status = ToolApprovalStatus.AutoApproved;
+                request.ApprovalTask?.SetResult(true);
+                ResultStatusText = $"Auto-approved tool: {request.ToolName}";
+                return;
+            }
+            
+            // Check if this tool is always denied
+            if (_alwaysDeniedTools.Contains(toolKey))
+            {
+                request.Status = ToolApprovalStatus.Denied;
+                request.ApprovalTask?.SetResult(false);
+                ResultStatusText = $"Auto-denied tool: {request.ToolName}";
+                return;
+            }
+            
+            // Show approval dialog for manual decision
             PendingToolApproval = request;
             IsToolApprovalVisible = true;
         });
+    }
+    
+    /// <summary>
+    /// Generates a unique key for tracking tool approval decisions.
+    /// Format: "serverLabel:toolName" for MCP tools, or just "toolName" for built-in tools.
+    /// </summary>
+    private static string GetToolKey(ToolCallRequest request)
+    {
+        return string.IsNullOrEmpty(request.ServerLabel) 
+            ? request.ToolName 
+            : $"{request.ServerLabel}:{request.ToolName}";
     }
 
     private void OnToolInvoked(string toolName)
@@ -824,9 +869,31 @@ public partial class AiQueryViewModel : ViewModelBase
     {
         if (PendingToolApproval?.ApprovalTask != null)
         {
+            // If the user checked "Remember Decision" or this is "Always Allow"
+            if (PendingToolApproval.RememberDecision || PendingToolApproval.AlwaysAllow)
+            {
+                var toolKey = GetToolKey(PendingToolApproval);
+                _alwaysAllowedTools.Add(toolKey);
+                _alwaysDeniedTools.Remove(toolKey); // Remove from denied if it was there
+            }
+            
+            PendingToolApproval.Status = ToolApprovalStatus.Approved;
             PendingToolApproval.ApprovalTask.SetResult(true);
             IsToolApprovalVisible = false;
             PendingToolApproval = null;
+        }
+    }
+    
+    /// <summary>
+    /// Approves the current tool call and marks it to always be allowed in the future.
+    /// </summary>
+    [RelayCommand]
+    private void AlwaysAllowToolCall()
+    {
+        if (PendingToolApproval != null)
+        {
+            PendingToolApproval.AlwaysAllow = true;
+            ApproveToolCall();
         }
     }
 
@@ -835,11 +902,41 @@ public partial class AiQueryViewModel : ViewModelBase
     {
         if (PendingToolApproval?.ApprovalTask != null)
         {
+            // If the user checked "Remember Decision"
+            if (PendingToolApproval.RememberDecision)
+            {
+                var toolKey = GetToolKey(PendingToolApproval);
+                _alwaysDeniedTools.Add(toolKey);
+                _alwaysAllowedTools.Remove(toolKey); // Remove from allowed if it was there
+            }
+            
+            PendingToolApproval.Status = ToolApprovalStatus.Denied;
             PendingToolApproval.ApprovalTask.SetResult(false);
             IsToolApprovalVisible = false;
             PendingToolApproval = null;
         }
     }
+    
+    /// <summary>
+    /// Clears all remembered tool approval decisions, requiring approval again for all tools.
+    /// </summary>
+    [RelayCommand]
+    private void ClearToolApprovalMemory()
+    {
+        _alwaysAllowedTools.Clear();
+        _alwaysDeniedTools.Clear();
+        ResultStatusText = "Tool approval memory cleared";
+    }
+    
+    /// <summary>
+    /// Gets the count of tools that are set to always allow.
+    /// </summary>
+    public int AlwaysAllowedToolCount => _alwaysAllowedTools.Count;
+    
+    /// <summary>
+    /// Gets whether any tools have remembered approval decisions.
+    /// </summary>
+    public bool HasRememberedToolDecisions => _alwaysAllowedTools.Count > 0 || _alwaysDeniedTools.Count > 0;
 
     [RelayCommand]
     private async Task RefreshMcpServersAsync()

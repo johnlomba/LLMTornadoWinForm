@@ -142,25 +142,40 @@
             
             <!-- Action buttons -->
             <Grid Grid.Row="3">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 
+                <!-- Remember decision checkbox -->
+                <CheckBox Grid.Row="0" Grid.ColumnSpan="4"
+                          IsChecked="{Binding RememberDecision}"
+                          Margin="0,0,0,12"
+                          Foreground="#A6ADC8"
+                          FontSize="12"
+                          Cursor="Hand">
+                    <TextBlock Text="Remember this decision for this tool" Foreground="#A6ADC8" />
+                </CheckBox>
+                
                 <!-- Info text -->
-                <TextBlock Grid.Column="0"
+                <TextBlock Grid.Row="1" Grid.Column="0"
                            Text="Review carefully before approving"
                            Foreground="#6C7086"
                            FontSize="11"
                            VerticalAlignment="Center" />
                 
                 <!-- Deny button -->
-                <Button Grid.Column="1"
+                <Button Grid.Row="1" Grid.Column="1"
                         Content="Deny"
                         Command="{Binding DenyCommand}"
-                        Margin="0,0,12,0"
-                        Padding="20,12"
+                        Margin="0,0,8,0"
+                        Padding="16,10"
                         Cursor="Hand">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
@@ -184,10 +199,11 @@
                 </Button>
                 
                 <!-- Approve button -->
-                <Button Grid.Column="2"
+                <Button Grid.Row="1" Grid.Column="2"
                         Content="Approve"
                         Command="{Binding ApproveCommand}"
-                        Padding="20,12"
+                        Margin="0,0,8,0"
+                        Padding="16,10"
                         Cursor="Hand">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
@@ -204,6 +220,34 @@
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
                                     <Setter TargetName="Border" Property="Background" Value="#94E2D5" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+                
+                <!-- Always Allow button -->
+                <Button Grid.Row="1" Grid.Column="3"
+                        Content="Always Allow"
+                        Command="{Binding ApproveAlwaysCommand}"
+                        Padding="16,10"
+                        Cursor="Hand"
+                        ToolTip="Approve this tool and skip prompts for future calls">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Border" 
+                                    Background="#89B4FA" 
+                                    CornerRadius="8" 
+                                    Padding="{TemplateBinding Padding}">
+                                <TextBlock Text="{TemplateBinding Content}"
+                                           Foreground="#1E1E2E"
+                                           FontWeight="SemiBold"
+                                           FontSize="13"
+                                           HorizontalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Border" Property="Background" Value="#B4BEFE" />
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>

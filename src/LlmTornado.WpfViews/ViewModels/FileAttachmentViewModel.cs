@@ -9,7 +9,15 @@ namespace LlmTornado.WpfViews.ViewModels;
 
 /// <summary>
 /// ViewModel for a file attachment with thumbnail preview and remove functionality.
+/// Supports images, documents, and text files with async loading.
 /// </summary>
+/// <remarks>
+/// Features:
+/// - Automatic thumbnail generation for images
+/// - Async content loading with progress indication
+/// - Validation of file type and size
+/// - Support for drag-and-drop operations
+/// </remarks>
 public partial class FileAttachmentViewModel : ObservableObject
 {
     private readonly FileAttachmentModel _model;
@@ -23,6 +31,12 @@ public partial class FileAttachmentViewModel : ObservableObject
     [ObservableProperty]
     private string? _errorMessage;
     
+    [ObservableProperty]
+    private double _loadProgress;
+    
+    [ObservableProperty]
+    private string? _textPreview;
+    
     /// <summary>
     /// Event raised when this attachment should be removed.
     /// </summary>
@@ -31,13 +45,15 @@ public partial class FileAttachmentViewModel : ObservableObject
     /// <summary>
     /// Creates a new FileAttachmentViewModel from a file path.
     /// </summary>
+    /// <param name="filePath">Path to the file to attach.</param>
+    /// <exception cref="ArgumentException">Thrown if the file type is not supported.</exception>
     public FileAttachmentViewModel(string filePath)
     {
         var fileInfo = new FileInfo(filePath);
         var extension = fileInfo.Extension.ToLowerInvariant();
         var fileType = FileAttachmentModel.GetFileType(extension);
         
-        if (fileType == null)
+        if (fileType == FileAttachmentType.Unknown)
         {
             throw new ArgumentException($"Unsupported file type: {extension}");
         }
@@ -46,7 +62,7 @@ public partial class FileAttachmentViewModel : ObservableObject
         {
             FilePath = filePath,
             FileName = fileInfo.Name,
-            FileType = fileType.Value,
+            FileType = fileType,
             FileSize = fileInfo.Length,
             MimeType = FileAttachmentModel.GetMimeType(extension)
         };
@@ -58,6 +74,7 @@ public partial class FileAttachmentViewModel : ObservableObject
     /// <summary>
     /// Creates a FileAttachmentViewModel from an existing model.
     /// </summary>
+    /// <param name="model">The existing FileAttachmentModel.</param>
     public FileAttachmentViewModel(FileAttachmentModel model)
     {
         _model = model;
@@ -110,9 +127,19 @@ public partial class FileAttachmentViewModel : ObservableObject
     public bool IsDocument => _model.FileType == FileAttachmentType.Document;
     
     /// <summary>
+    /// Whether this is a text file attachment.
+    /// </summary>
+    public bool IsText => _model.FileType == FileAttachmentType.Text;
+    
+    /// <summary>
     /// Base64-encoded content for sending to API.
     /// </summary>
     public string? Base64Content => _model.Base64Content;
+    
+    /// <summary>
+    /// Plain text content (for text files).
+    /// </summary>
+    public string? TextContent => _model.TextContent;
     
     /// <summary>
     /// MIME type of the file.
@@ -125,12 +152,38 @@ public partial class FileAttachmentViewModel : ObservableObject
     public bool IsFileTooLarge => _model.FileSize > FileAttachmentModel.MaxFileSizeBytes;
     
     /// <summary>
+    /// Gets the file type icon.
+    /// </summary>
+    public string FileTypeIcon => _model.FileTypeIcon;
+    
+    /// <summary>
     /// Command to remove this attachment.
     /// </summary>
     [RelayCommand]
     private void Remove()
     {
         RemoveRequested?.Invoke(this);
+    }
+    
+    /// <summary>
+    /// Command to open the file in the default application.
+    /// </summary>
+    [RelayCommand]
+    private void OpenFile()
+    {
+        try
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = _model.FilePath,
+                UseShellExecute = true
+            };
+            System.Diagnostics.Process.Start(psi);
+        }
+        catch
+        {
+            // Ignore errors opening file
+        }
     }
     
     /// <summary>
@@ -142,6 +195,7 @@ public partial class FileAttachmentViewModel : ObservableObject
         {
             IsLoading = true;
             ErrorMessage = null;
+            LoadProgress = 0;
             
             // Validate file size
             if (IsFileTooLarge)
@@ -150,12 +204,34 @@ public partial class FileAttachmentViewModel : ObservableObject
                 return;
             }
             
-            // Read file and convert to base64
-            var bytes = await File.ReadAllBytesAsync(_model.FilePath);
-            _model.Base64Content = Convert.ToBase64String(bytes);
+            LoadProgress = 0.3;
             
-            // Generate thumbnail
-            await GenerateThumbnailAsync(bytes);
+            // Handle text files differently
+            if (_model.FileType == FileAttachmentType.Text)
+            {
+                _model.TextContent = await File.ReadAllTextAsync(_model.FilePath);
+                
+                // Generate a preview (first 200 chars)
+                TextPreview = _model.TextContent.Length > 200 
+                    ? _model.TextContent[..200] + "..." 
+                    : _model.TextContent;
+                    
+                LoadProgress = 1.0;
+            }
+            else
+            {
+                // Read file and convert to base64
+                var bytes = await File.ReadAllBytesAsync(_model.FilePath);
+                LoadProgress = 0.6;
+                
+                _model.Base64Content = Convert.ToBase64String(bytes);
+                LoadProgress = 0.8;
+                
+                // Generate thumbnail
+                await GenerateThumbnailAsync(bytes);
+            }
+            
+            _model.IsProcessed = true;
         }
         catch (Exception ex)
         {

@@ -6,7 +6,18 @@ namespace LlmTornado.WpfViews.Models;
 
 /// <summary>
 /// Represents a pending tool call that requires user approval.
+/// This class is used by the ToolApprovalDialog to display tool call requests
+/// and collect user decisions before tool execution.
 /// </summary>
+/// <remarks>
+/// The approval workflow:
+/// 1. ChatService creates a ToolCallRequest when a tool needs execution
+/// 2. OnToolApprovalRequired event is raised with this request
+/// 3. UI displays the ToolApprovalDialog with the request details
+/// 4. User approves or denies the request
+/// 5. ApprovalTask is completed with the user's decision
+/// 6. ChatService continues or aborts tool execution based on the decision
+/// </remarks>
 public class ToolCallRequest : INotifyPropertyChanged
 {
     private string _toolName = string.Empty;
@@ -14,6 +25,10 @@ public class ToolCallRequest : INotifyPropertyChanged
     private ToolApprovalStatus _status = ToolApprovalStatus.Pending;
     private string? _result;
     private DateTime _requestedAt = DateTime.UtcNow;
+    private string? _serverLabel;
+    private bool _rememberDecision;
+    private bool _alwaysAllow;
+    private long _executionTimeMs;
     
     /// <summary>
     /// Unique ID for this request.
@@ -85,6 +100,58 @@ public class ToolCallRequest : INotifyPropertyChanged
     {
         get => _requestedAt;
         set => SetField(ref _requestedAt, value);
+    }
+    
+    /// <summary>
+    /// The MCP server this tool belongs to (if applicable).
+    /// </summary>
+    public string? ServerLabel
+    {
+        get => _serverLabel;
+        set => SetField(ref _serverLabel, value);
+    }
+    
+    /// <summary>
+    /// Whether to remember this decision for future calls to this tool.
+    /// </summary>
+    public bool RememberDecision
+    {
+        get => _rememberDecision;
+        set => SetField(ref _rememberDecision, value);
+    }
+    
+    /// <summary>
+    /// Whether to always allow this tool without prompting.
+    /// </summary>
+    public bool AlwaysAllow
+    {
+        get => _alwaysAllow;
+        set => SetField(ref _alwaysAllow, value);
+    }
+    
+    /// <summary>
+    /// Execution time in milliseconds (if completed).
+    /// </summary>
+    public long ExecutionTimeMs
+    {
+        get => _executionTimeMs;
+        set => SetField(ref _executionTimeMs, value);
+    }
+    
+    /// <summary>
+    /// Human-readable time since request was made.
+    /// </summary>
+    public string TimeSinceRequest
+    {
+        get
+        {
+            var elapsed = DateTime.UtcNow - RequestedAt;
+            if (elapsed.TotalSeconds < 60)
+                return $"{elapsed.Seconds}s ago";
+            if (elapsed.TotalMinutes < 60)
+                return $"{elapsed.Minutes}m ago";
+            return $"{elapsed.Hours}h ago";
+        }
     }
     
     /// <summary>

@@ -6,21 +6,127 @@ namespace LlmTornado.WpfViews.Services;
 
 /// <summary>
 /// Service for discovering available models from providers.
+/// Supports dynamic discovery from APIs and fallback to well-known model lists.
 /// </summary>
+/// <remarks>
+/// This service provides:
+/// - Dynamic model discovery via provider APIs
+/// - Fallback to curated lists of well-known models
+/// - Caching of discovered models
+/// - Model metadata estimation (context size, capabilities)
+/// </remarks>
 public class ModelDiscoveryService
 {
+    private readonly Dictionary<LLmProviders, List<ModelOption>> _modelCache = new();
+    private readonly Dictionary<LLmProviders, DateTime> _cacheTimestamps = new();
+    private static readonly TimeSpan CacheExpiry = TimeSpan.FromMinutes(30);
+    
+    /// <summary>
+    /// Event raised when model discovery completes.
+    /// </summary>
+    public event Action<LLmProviders, List<ModelOption>>? ModelsDiscovered;
+    
+    /// <summary>
+    /// Event raised when model discovery fails.
+    /// </summary>
+    public event Action<LLmProviders, Exception>? DiscoveryFailed;
+    
+    /// <summary>
+    /// Gets well-known models for a provider without making API calls.
+    /// Useful as a fallback or when the API is unavailable.
+    /// </summary>
+    /// <param name="provider">The provider to get models for.</param>
+    /// <returns>List of well-known models for the provider.</returns>
+    public static List<ModelOption> GetWellKnownModels(LLmProviders provider)
+    {
+        return provider switch
+        {
+            LLmProviders.OpenAi => GetOpenAiModels(),
+            LLmProviders.Anthropic => GetAnthropicModels(),
+            LLmProviders.Google => GetGoogleModels(),
+            LLmProviders.Cohere => GetCohereModels(),
+            LLmProviders.Mistral => GetMistralModels(),
+            LLmProviders.Groq => GetGroqModels(),
+            _ => []
+        };
+    }
+    
+    private static List<ModelOption> GetOpenAiModels() =>
+    [
+        new() { Id = "o4-mini", DisplayName = "o4 Mini", ProviderEnum = LLmProviders.OpenAi, MaxContextTokens = 200000 },
+        new() { Id = "o3-mini", DisplayName = "o3 Mini", ProviderEnum = LLmProviders.OpenAi, MaxContextTokens = 200000 },
+        new() { Id = "gpt-4o", DisplayName = "GPT-4o", ProviderEnum = LLmProviders.OpenAi, MaxContextTokens = 128000 },
+        new() { Id = "gpt-4o-mini", DisplayName = "GPT-4o Mini", ProviderEnum = LLmProviders.OpenAi, MaxContextTokens = 128000 },
+        new() { Id = "gpt-4-turbo", DisplayName = "GPT-4 Turbo", ProviderEnum = LLmProviders.OpenAi, MaxContextTokens = 128000 },
+        new() { Id = "gpt-4", DisplayName = "GPT-4", ProviderEnum = LLmProviders.OpenAi, MaxContextTokens = 8192 },
+        new() { Id = "gpt-3.5-turbo", DisplayName = "GPT-3.5 Turbo", ProviderEnum = LLmProviders.OpenAi, MaxContextTokens = 16385 }
+    ];
+    
+    private static List<ModelOption> GetAnthropicModels() =>
+    [
+        new() { Id = "claude-sonnet-4-20250514", DisplayName = "Claude 4 Sonnet", ProviderEnum = LLmProviders.Anthropic, MaxContextTokens = 200000 },
+        new() { Id = "claude-3-5-sonnet-20241022", DisplayName = "Claude 3.5 Sonnet", ProviderEnum = LLmProviders.Anthropic, MaxContextTokens = 200000 },
+        new() { Id = "claude-3-5-haiku-20241022", DisplayName = "Claude 3.5 Haiku", ProviderEnum = LLmProviders.Anthropic, MaxContextTokens = 200000 },
+        new() { Id = "claude-3-opus-20240229", DisplayName = "Claude 3 Opus", ProviderEnum = LLmProviders.Anthropic, MaxContextTokens = 200000 },
+        new() { Id = "claude-3-sonnet-20240229", DisplayName = "Claude 3 Sonnet", ProviderEnum = LLmProviders.Anthropic, MaxContextTokens = 200000 },
+        new() { Id = "claude-3-haiku-20240307", DisplayName = "Claude 3 Haiku", ProviderEnum = LLmProviders.Anthropic, MaxContextTokens = 200000 }
+    ];
+    
+    private static List<ModelOption> GetGoogleModels() =>
+    [
+        new() { Id = "gemini-2.0-flash", DisplayName = "Gemini 2.0 Flash", ProviderEnum = LLmProviders.Google, MaxContextTokens = 1000000 },
+        new() { Id = "gemini-1.5-pro", DisplayName = "Gemini 1.5 Pro", ProviderEnum = LLmProviders.Google, MaxContextTokens = 2000000 },
+        new() { Id = "gemini-1.5-flash", DisplayName = "Gemini 1.5 Flash", ProviderEnum = LLmProviders.Google, MaxContextTokens = 1000000 },
+        new() { Id = "gemini-1.0-pro", DisplayName = "Gemini 1.0 Pro", ProviderEnum = LLmProviders.Google, MaxContextTokens = 32768 }
+    ];
+    
+    private static List<ModelOption> GetCohereModels() =>
+    [
+        new() { Id = "command-r-plus", DisplayName = "Command R+", ProviderEnum = LLmProviders.Cohere, MaxContextTokens = 128000 },
+        new() { Id = "command-r", DisplayName = "Command R", ProviderEnum = LLmProviders.Cohere, MaxContextTokens = 128000 },
+        new() { Id = "command", DisplayName = "Command", ProviderEnum = LLmProviders.Cohere, MaxContextTokens = 4096 }
+    ];
+    
+    private static List<ModelOption> GetMistralModels() =>
+    [
+        new() { Id = "mistral-large-latest", DisplayName = "Mistral Large", ProviderEnum = LLmProviders.Mistral, MaxContextTokens = 128000 },
+        new() { Id = "mistral-medium-latest", DisplayName = "Mistral Medium", ProviderEnum = LLmProviders.Mistral, MaxContextTokens = 32768 },
+        new() { Id = "mistral-small-latest", DisplayName = "Mistral Small", ProviderEnum = LLmProviders.Mistral, MaxContextTokens = 32768 },
+        new() { Id = "codestral-latest", DisplayName = "Codestral", ProviderEnum = LLmProviders.Mistral, MaxContextTokens = 32768 }
+    ];
+    
+    private static List<ModelOption> GetGroqModels() =>
+    [
+        new() { Id = "llama-3.3-70b-versatile", DisplayName = "Llama 3.3 70B", ProviderEnum = LLmProviders.Groq, MaxContextTokens = 128000 },
+        new() { Id = "llama-3.1-8b-instant", DisplayName = "Llama 3.1 8B", ProviderEnum = LLmProviders.Groq, MaxContextTokens = 128000 },
+        new() { Id = "mixtral-8x7b-32768", DisplayName = "Mixtral 8x7B", ProviderEnum = LLmProviders.Groq, MaxContextTokens = 32768 },
+        new() { Id = "gemma2-9b-it", DisplayName = "Gemma 2 9B", ProviderEnum = LLmProviders.Groq, MaxContextTokens = 8192 }
+    ];
+    
     /// <summary>
     /// Discovers models from a specific provider using the provided TornadoApi instance.
+    /// Falls back to well-known models if the API call fails.
     /// </summary>
-    public async Task<List<ModelOption>> DiscoverModelsAsync(TornadoApi api, LLmProviders provider)
+    public async Task<List<ModelOption>> DiscoverModelsAsync(TornadoApi api, LLmProviders provider, bool useCache = true)
     {
+        // Check cache
+        if (useCache && _modelCache.TryGetValue(provider, out var cached) && 
+            _cacheTimestamps.TryGetValue(provider, out var timestamp) &&
+            DateTime.UtcNow - timestamp < CacheExpiry)
+        {
+            return cached;
+        }
+        
         try
         {
             var retrievedModels = await api.Models.GetModels(provider);
             
             if (retrievedModels == null || retrievedModels.Count == 0)
             {
-                return new List<ModelOption>();
+                // Fall back to well-known models
+                var wellKnown = GetWellKnownModels(provider);
+                CacheModels(provider, wellKnown);
+                return wellKnown;
             }
             
             var modelOptions = new List<ModelOption>();
@@ -46,12 +152,47 @@ public class ModelDiscoveryService
                 modelOptions.Add(modelOption);
             }
             
-            return modelOptions.OrderBy(m => m.DisplayName).ToList();
+            var result = modelOptions.OrderBy(m => m.DisplayName).ToList();
+            CacheModels(provider, result);
+            ModelsDiscovered?.Invoke(provider, result);
+            return result;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Return empty list on error - provider might not be available, network issue, etc.
-            return new List<ModelOption>();
+            DiscoveryFailed?.Invoke(provider, ex);
+            
+            // Return well-known models as fallback
+            var fallback = GetWellKnownModels(provider);
+            if (fallback.Count > 0)
+            {
+                CacheModels(provider, fallback);
+                return fallback;
+            }
+            
+            return [];
+        }
+    }
+    
+    private void CacheModels(LLmProviders provider, List<ModelOption> models)
+    {
+        _modelCache[provider] = models;
+        _cacheTimestamps[provider] = DateTime.UtcNow;
+    }
+    
+    /// <summary>
+    /// Clears the model cache for a specific provider or all providers.
+    /// </summary>
+    public void ClearCache(LLmProviders? provider = null)
+    {
+        if (provider.HasValue)
+        {
+            _modelCache.Remove(provider.Value);
+            _cacheTimestamps.Remove(provider.Value);
+        }
+        else
+        {
+            _modelCache.Clear();
+            _cacheTimestamps.Clear();
         }
     }
     
