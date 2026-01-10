@@ -1,0 +1,14 @@
+{
+  "inputs": [],
+  "servers": {
+    "computer-use": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "computer-use-mcp"
+      ],
+      "env": {}
+    }
+  }
+}

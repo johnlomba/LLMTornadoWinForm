@@ -145,4 +145,52 @@ public static class MCPToolkits
             allowedTools: allowedTools);
         return server;
     }
+
+    /// <summary>
+    /// Microsoft SQL Server MCP toolkit using mssql_mcp_server.
+    /// Provides tools: list_tables, describe_table, read_query, write_query, create_table, etc.
+    /// </summary>
+    /// <param name="options">MSSQL connection options</param>
+    /// <param name="allowedTools">Optional: restrict to specific tools</param>
+    public static MCPServer MsSql(MsSqlOptions options, string[]? allowedTools = null)
+    {
+        MCPServer server = new MCPServer("mssql", command: "uvx", arguments:
+            [
+                "mssql_mcp_server"
+            ],
+            environmentVariables: new Dictionary<string, string>
+            {
+                ["MSSQL_DRIVER"] = options.Driver,
+                ["MSSQL_HOST"] = options.Host,
+                ["MSSQL_DATABASE"] = options.Database,
+                ["MSSQL_USER"] = options.User,
+                ["MSSQL_PASSWORD"] = options.Password
+            },
+            allowedTools: allowedTools);
+        return server;
+    }
+
+    /// <summary>
+    /// MySQL MCP toolkit using mysql-mcp-server.
+    /// Provides tools: list_tables, describe_table, read_query, etc.
+    /// </summary>
+    /// <param name="options">MySQL connection options</param>
+    /// <param name="allowedTools">Optional: restrict to specific tools</param>
+    public static MCPServer MySql(MySqlOptions options, string[]? allowedTools = null)
+    {
+        MCPServer server = new MCPServer("mysql", command: "uvx", arguments:
+            [
+                "mysql-mcp-server"
+            ],
+            environmentVariables: new Dictionary<string, string>
+            {
+                ["MYSQL_HOST"] = options.Host,
+                ["MYSQL_PORT"] = options.Port.ToString(),
+                ["MYSQL_DATABASE"] = options.Database,
+                ["MYSQL_USER"] = options.User,
+                ["MYSQL_PASSWORD"] = options.Password
+            },
+            allowedTools: allowedTools);
+        return server;
+    }
 }
