@@ -65,7 +65,8 @@
             <!-- Settings content -->
             <ScrollViewer Grid.Row="1" 
                           VerticalScrollBarVisibility="Auto"
-                          Margin="0,0,0,20">
+                          Margin="0,0,0,20"
+                          Padding="0,0,12,0">
                 <StackPanel>
                     <!-- API Configuration Section -->
                     <TextBlock Text="API Keys"
@@ -251,13 +252,37 @@
                                    Foreground="#A6ADC8"
                                    FontSize="12"
                                    Margin="0,0,0,6" />
-                        <ComboBox ItemsSource="{Binding AvailableModels}"
+                        <ComboBox ItemsSource="{Binding FilteredModels}"
                                   SelectedItem="{Binding SelectedModel}"
                                   DisplayMemberPath="DisplayName"
+                                  IsEditable="True"
+                                  IsTextSearchEnabled="True"
+                                  TextSearch.TextPath="DisplayName"
+                                  StaysOpenOnEdit="True"
                                   Background="#252536"
                                   Foreground="#CDD6F4"
                                   BorderBrush="#45475A"
-                                  Padding="10,8" />
+                                  Padding="10,8"
+                                  MaxDropDownHeight="300">
+                            <ComboBox.Style>
+                                <Style TargetType="ComboBox">
+                                    <Setter Property="Text" Value="{Binding ModelSearchText, UpdateSourceTrigger=PropertyChanged}" />
+                                    <EventSetter Event="TextChanged" Handler="ModelComboBox_TextChanged" />
+                                    <EventSetter Event="SelectionChanged" Handler="ModelComboBox_SelectionChanged" />
+                                </Style>
+                            </ComboBox.Style>
+                            <ComboBox.ItemContainerStyle>
+                                <Style TargetType="ComboBoxItem">
+                                    <Setter Property="Background" Value="#252536" />
+                                    <Setter Property="Foreground" Value="#CDD6F4" />
+                                    <Style.Triggers>
+                                        <Trigger Property="IsHighlighted" Value="True">
+                                            <Setter Property="Background" Value="#45475A" />
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ComboBox.ItemContainerStyle>
+                        </ComboBox>
                     </StackPanel>
                     
                     <!-- Custom Models Section -->

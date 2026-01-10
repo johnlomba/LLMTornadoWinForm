@@ -31,5 +31,32 @@ public partial class SettingsDialog : UserControl
             viewModel.OnProviderKeyChanged();
         }
     }
+    
+    private void ModelComboBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.ComboBox comboBox && DataContext is SettingsViewModel viewModel)
+        {
+            // Only update search text if the text doesn't match the selected item's display name
+            // This prevents clearing the search when the selected item's display name is shown
+            if (comboBox.SelectedItem == null || 
+                comboBox.Text != (comboBox.SelectedItem as LlmTornado.WpfViews.Models.ModelOption)?.DisplayName)
+            {
+                viewModel.ModelSearchText = comboBox.Text ?? string.Empty;
+            }
+        }
+    }
+    
+    private void ModelComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.ComboBox comboBox && DataContext is SettingsViewModel viewModel)
+        {
+            // Clear search text when a model is selected and update the text to show the display name
+            if (comboBox.SelectedItem is LlmTornado.WpfViews.Models.ModelOption selectedModel)
+            {
+                viewModel.ModelSearchText = string.Empty;
+                comboBox.Text = selectedModel.DisplayName;
+            }
+        }
+    }
 }
 

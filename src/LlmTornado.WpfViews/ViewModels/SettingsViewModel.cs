@@ -68,6 +68,14 @@ public partial class SettingsViewModel : ObservableObject
     public ObservableCollection<ModelOption> AvailableModels { get; } = new();
     
     /// <summary>
+    /// Filtered model options for search.
+    /// </summary>
+    public ObservableCollection<ModelOption> FilteredModels { get; } = new();
+    
+    [ObservableProperty]
+    private string _modelSearchText = string.Empty;
+    
+    /// <summary>
     /// Custom models defined by the user.
     /// </summary>
     public ObservableCollection<ModelOption> CustomModels { get; } = new();
@@ -94,6 +102,35 @@ public partial class SettingsViewModel : ObservableObject
         
         // Initialize provider keys for all providers
         InitializeProviderKeys();
+        
+        // Initialize filtered models to match available models
+        AvailableModels.CollectionChanged += (s, e) => UpdateFilteredModels();
+    }
+    
+    /// <summary>
+    /// Updates the filtered models based on search text.
+    /// </summary>
+    private void UpdateFilteredModels()
+    {
+        FilteredModels.Clear();
+        
+        var searchLower = ModelSearchText?.ToLowerInvariant() ?? string.Empty;
+        
+        foreach (var model in AvailableModels)
+        {
+            if (string.IsNullOrWhiteSpace(searchLower) ||
+                model.DisplayName.ToLowerInvariant().Contains(searchLower) ||
+                model.Id.ToLowerInvariant().Contains(searchLower) ||
+                model.ProviderEnum.ToString().ToLowerInvariant().Contains(searchLower))
+            {
+                FilteredModels.Add(model);
+            }
+        }
+    }
+    
+    partial void OnModelSearchTextChanged(string value)
+    {
+        UpdateFilteredModels();
     }
     
     /// <summary>
@@ -149,14 +186,21 @@ public partial class SettingsViewModel : ObservableObject
         // Load other settings
         SelectedModel = AvailableModels.FirstOrDefault(m => m.Id == settings.SelectedModelId) 
             ?? AvailableModels.FirstOrDefault();
+        
+        // Update filtered models
+        UpdateFilteredModels();
+        
         EnableStreaming = settings.EnableStreaming;
         MaxTokens = settings.MaxTokens;
         Temperature = settings.Temperature;
         SaveConversationHistory = settings.SaveConversationHistory;
         Theme = settings.Theme;
         
-        // Refresh available models (includes discovered + custom)
-        await RefreshAvailableModelsAsync();
+            // Refresh available models (includes discovered + custom)
+            await RefreshAvailableModelsAsync();
+            
+            // Update filtered models
+            UpdateFilteredModels();
         
         // If selected model is not in available models, try to find it
         if (SelectedModel == null && !string.IsNullOrEmpty(settings.SelectedModelId))
@@ -204,6 +248,9 @@ public partial class SettingsViewModel : ObservableObject
                     AvailableModels.Add(defaultModel);
                 }
             }
+            
+            // Update filtered models
+            UpdateFilteredModels();
             
             DiscoveryStatus = $"Found {discoveredModels.Count} models from configured providers.";
         }
@@ -254,6 +301,9 @@ public partial class SettingsViewModel : ObservableObject
         CustomModels.Add(customModel);
         AvailableModels.Add(customModel);
         
+        // Update filtered models
+        UpdateFilteredModels();
+        
         // Reset form
         NewCustomModelId = string.Empty;
         NewCustomModelDisplayName = string.Empty;
@@ -274,6 +324,9 @@ public partial class SettingsViewModel : ObservableObject
         
         CustomModels.Remove(model);
         AvailableModels.Remove(model);
+        
+        // Update filtered models
+        UpdateFilteredModels();
         
         // If this was the selected model, clear selection
         if (SelectedModel == model)
