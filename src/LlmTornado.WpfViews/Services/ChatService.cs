@@ -26,6 +26,7 @@ public class ChatService
     private bool _isProcessing;
     private DateTime _requestStartTime;
     private ToolCallRequest? _pendingToolRequest;
+    private McpServerManager? _mcpServerManager;
     
     /// <summary>
     /// Whether tool calls require user approval before execution.
@@ -89,9 +90,17 @@ public class ChatService
     public bool IsInitialized => _runtime != null;
     
     /// <summary>
+    /// Sets the MCP server manager for loading MCP tools.
+    /// </summary>
+    public void SetMcpServerManager(McpServerManager manager)
+    {
+        _mcpServerManager = manager;
+    }
+
+    /// <summary>
     /// Initializes the chat service with the given settings.
     /// </summary>
-    public void Initialize(SettingsModel settings, string? systemPrompt = null)
+    public async Task InitializeAsync(SettingsModel settings, string? systemPrompt = null)
     {
         if (string.IsNullOrWhiteSpace(settings.OpenAiApiKey) && !settings.UseAzure)
         {
@@ -132,6 +141,27 @@ public class ChatService
             _ => ChatModel.OpenAi.Gpt4.O
         };
         
+        // Build tool permission dictionary
+        var toolPermissionRequired = new Dictionary<string, bool>
+        {
+            { "GetCurrentWeather", true }
+        };
+
+        // Load MCP tools if manager is available
+        var allTools = new List<Delegate>();
+        if (_mcpServerManager != null)
+        {
+            // Initialize all MCP servers
+            await _mcpServerManager.InitializeAllServersAsync();
+            
+            // Get all MCP tools
+            var mcpTools = _mcpServerManager.GetAllTools();
+            
+            // Add MCP tools to the agent (we'll add them after agent creation)
+            // For now, we'll add them as delegates are expected, but MCP tools are Tool objects
+            // We need to add them after agent creation using AddTool
+        }
+        
         // Create the agent
         _agent = new TornadoAgent(
             _api, 
@@ -139,12 +169,26 @@ public class ChatService
             instructions: systemPrompt ?? "You are a helpful assistant",
             streaming: settings.EnableStreaming,
             options: chatOptions,
-            tools: [GetCurrentWeather],
-             toolPermissionRequired:new Dictionary<string, bool>()
-                {
-                    { "GetCurrentWeather", true }
-                }
+            tools: allTools,
+            toolPermissionRequired: toolPermissionRequired
         );
+        
+        // Add MCP tools to the agent after creation
+        if (_mcpServerManager != null)
+        {
+            var mcpTools = _mcpServerManager.GetAllTools();
+            foreach (var tool in mcpTools)
+            {
+                _agent.AddTool(tool);
+                // Set default permission (can be configured per tool)
+                if (tool.Function.Name != null && !toolPermissionRequired.ContainsKey(tool.Function.Name))
+                {
+                    toolPermissionRequired[tool.Function.Name] = true; // Require approval by default
+                }
+            }
+            // Update the agent's tool permission dictionary
+            _agent.ToolPermissionRequired = toolPermissionRequired;
+        }
         
         // Create runtime configuration
         var config = new SingletonRuntimeConfiguration(_agent)
@@ -221,25 +265,19 @@ public class ChatService
         return (toolName, arguments);
     }
 
-    [JsonConverter(typeof(StringEnumConverter))]
-    public enum Unit
-    {
-        Celsius, 
-        Fahrenheit
-    }
-
-    [Description("Get the current weather in a given location")]
-    public static string GetCurrentWeather(
-        [Description("The city and state, e.g. Boston, MA")] string location,
-        [Description("unit of temperature measurement in C or F")] Unit unit = Unit.Celsius)
-    {
-        // Call the weather API here.
-        return $"31 C";
-    }
+    
     /// <summary>
     /// Sends a message and returns the response.
     /// </summary>
     public async Task<ChatMessage?> SendMessageAsync(string content, CancellationToken cancellationToken = default)
+    {
+        return await SendMessageAsync(content, null, cancellationToken);
+    }
+    
+    /// <summary>
+    /// Sends a message with optional file attachments and returns the response.
+    /// </summary>
+    public async Task<ChatMessage?> SendMessageAsync(string content, List<FileAttachmentModel>? attachments, CancellationToken cancellationToken = default)
     {
         if (_runtime == null)
         {
@@ -258,7 +296,38 @@ public class ChatService
         {
             OnProcessingStarted?.Invoke();
             
-            var userMessage = new ChatMessage(ChatMessageRoles.User, content);
+            // Create the user message
+            ChatMessage userMessage;
+            
+            if (attachments != null && attachments.Count > 0)
+            {
+                // Build message parts for multi-part message
+                var parts = new List<ChatMessagePart>();
+                
+                // Add text content if present
+                if (!string.IsNullOrWhiteSpace(content))
+                {
+                    parts.Add(new ChatMessagePart(content));
+                }
+                
+                // Add file attachments as parts
+                foreach (var attachment in attachments)
+                {
+                    var part = ConvertAttachmentToPart(attachment);
+                    if (part != null)
+                    {
+                        parts.Add(part);
+                    }
+                }
+                
+                userMessage = new ChatMessage(ChatMessageRoles.User, parts);
+            }
+            else
+            {
+                // Simple text message
+                userMessage = new ChatMessage(ChatMessageRoles.User, content);
+            }
+            
             var response = await _runtime.InvokeAsync(userMessage);
             
             OnProcessingCompleted?.Invoke(response);
@@ -277,6 +346,34 @@ public class ChatService
         finally
         {
             _isProcessing = false;
+        }
+    }
+    
+    /// <summary>
+    /// Converts a FileAttachmentModel to a ChatMessagePart.
+    /// </summary>
+    private static ChatMessagePart? ConvertAttachmentToPart(FileAttachmentModel attachment)
+    {
+        if (string.IsNullOrEmpty(attachment.Base64Content))
+        {
+            return null;
+        }
+        
+        switch (attachment.FileType)
+        {
+            case FileAttachmentType.Image:
+                // Create data URL for image
+                var imageDataUrl = $"data:{attachment.MimeType};base64,{attachment.Base64Content}";
+                var chatImage = new ChatImage(imageDataUrl);
+                return new ChatMessagePart(chatImage);
+                
+            case FileAttachmentType.Document:
+                // Create ChatDocument for PDF (Anthropic only)
+                var chatDocument = new ChatDocument(attachment.Base64Content);
+                return new ChatMessagePart(chatDocument);
+                
+            default:
+                return null;
         }
     }
     
@@ -315,10 +412,10 @@ public class ChatService
     /// <summary>
     /// Reinitializes with a new system prompt.
     /// </summary>
-    public void UpdateSystemPrompt(SettingsModel settings, string systemPrompt)
+    public async Task UpdateSystemPromptAsync(SettingsModel settings, string systemPrompt)
     {
         ClearConversation();
-        Initialize(settings, systemPrompt);
+        await InitializeAsync(settings, systemPrompt);
     }
     
     /// <summary>

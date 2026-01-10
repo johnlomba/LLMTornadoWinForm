@@ -57,6 +57,16 @@
                               ui:ControlHelper.PlaceholderText="Select Model"
                               Margin="0,0,8,0" />
                     
+                    <!-- MCP Servers button -->
+                    <Button Command="{Binding OpenMcpServersCommand}"
+                            ToolTip="MCP Servers"
+                            Padding="8"
+                            Margin="0,0,8,0"
+                            Background="Transparent"
+                            Cursor="Hand">
+                        <TextBlock Text="&#x1F4BE;" FontSize="18" Foreground="#A6ADC8" />
+                    </Button>
+                    
                     <!-- Settings button -->
                     <Button Command="{Binding OpenSettingsCommand}"
                             ToolTip="Settings"
@@ -215,6 +225,16 @@
             <views:ToolApprovalDialog DataContext="{Binding ToolApprovalViewModel}"
                                       HorizontalAlignment="Center"
                                       VerticalAlignment="Center" />
+        </Grid>
+        
+        <!-- MCP Servers Dialog overlay -->
+        <Grid Grid.RowSpan="3"
+              Visibility="{Binding IsMcpServersOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="#80000000" />
+            <views:McpServersDialog DataContext="{Binding McpServersViewModel}"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    CloseRequested="McpServersDialog_CloseRequested" />
         </Grid>
     </Grid>
 </Window>

@@ -182,3 +182,30 @@ public class CountToVisibilityConverter : IValueConverter
     }
 }
 
+/// <summary>
+/// Converts string array to/from newline-separated string.
+/// </summary>
+public class ArrayToStringConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is string[] array)
+        {
+            return string.Join(Environment.NewLine, array);
+        }
+        return string.Empty;
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is string str && !string.IsNullOrWhiteSpace(str))
+        {
+            return str.Split(new[] { Environment.NewLine, "\n", "\r\n" }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim())
+                .Where(s => !string.IsNullOrEmpty(s))
+                .ToArray();
+        }
+        return Array.Empty<string>();
+    }
+}
+

@@ -79,10 +79,46 @@ public class ChatMessageModel
     public int? TokenCount { get; set; }
     
     /// <summary>
+    /// Attachments for this message.
+    /// </summary>
+    public List<MessageAttachmentModel>? Attachments { get; set; }
+    
+    /// <summary>
     /// Whether this message is currently being streamed.
     /// </summary>
     [JsonIgnore]
     public bool IsStreaming { get; set; }
+}
+
+/// <summary>
+/// Represents a serialized attachment in a message.
+/// </summary>
+public class MessageAttachmentModel
+{
+    /// <summary>
+    /// Unique identifier for the attachment.
+    /// </summary>
+    public string Id { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Display name of the file.
+    /// </summary>
+    public string FileName { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Type of the attachment.
+    /// </summary>
+    public FileAttachmentType FileType { get; set; }
+    
+    /// <summary>
+    /// Human-readable file size.
+    /// </summary>
+    public string FileSizeDisplay { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Base64-encoded thumbnail for images (for display in history).
+    /// </summary>
+    public string? ThumbnailBase64 { get; set; }
 }
 
 /// <summary>

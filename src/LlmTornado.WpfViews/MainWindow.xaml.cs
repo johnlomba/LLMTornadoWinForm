@@ -47,5 +47,10 @@ public partial class MainWindow : Window
     {
         _viewModel.SelectPromptFromEditor(template);
     }
+
+    private void McpServersDialog_CloseRequested(object sender, EventArgs e)
+    {
+        _viewModel.CloseMcpServersCommand.Execute(null);
+    }
 }
 

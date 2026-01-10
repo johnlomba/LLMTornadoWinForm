@@ -22,6 +22,63 @@
             <Setter Property="Foreground" Value="#CDD6F4" />
             <Setter Property="PagePadding" Value="0" />
         </Style>
+        
+        <!-- Attachment item template for message display -->
+        <DataTemplate x:Key="MessageAttachmentTemplate" DataType="{x:Type vm:MessageAttachmentViewModel}">
+            <Border Background="#252536" 
+                    CornerRadius="8" 
+                    Padding="8"
+                    Margin="0,0,8,8"
+                    MaxWidth="200">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    
+                    <!-- Image thumbnail -->
+                    <Border Grid.Row="0" 
+                            CornerRadius="4"
+                            Visibility="{Binding IsImage, Converter={StaticResource BoolToVisibilityConverter}}"
+                            MaxWidth="180"
+                            MaxHeight="150">
+                        <Image Source="{Binding Thumbnail}" 
+                               Stretch="Uniform"
+                               RenderOptions.BitmapScalingMode="HighQuality" />
+                    </Border>
+                    
+                    <!-- PDF icon for documents -->
+                    <Border Grid.Row="0" 
+                            Background="#313244" 
+                            CornerRadius="4"
+                            Width="80" 
+                            Height="60"
+                            HorizontalAlignment="Left"
+                            Visibility="{Binding IsDocument, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock Text="PDF" 
+                                       FontSize="18" 
+                                       FontWeight="Bold"
+                                       Foreground="#F38BA8"
+                                       HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+                    
+                    <!-- File info -->
+                    <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                        <TextBlock Text="{Binding FileName}" 
+                                   Foreground="#CDD6F4"
+                                   FontSize="11"
+                                   TextTrimming="CharacterEllipsis"
+                                   MaxWidth="180"
+                                   ToolTip="{Binding FileName}" />
+                        <TextBlock Text="{Binding FileSizeDisplay}" 
+                                   Foreground="#6C7086"
+                                   FontSize="10" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
     </UserControl.Resources>
     
     <Grid Margin="16,8" HorizontalAlignment="{Binding Role, Converter={StaticResource RoleToAlignmentConverter}}">
@@ -32,6 +89,7 @@
                 MinWidth="100">
             <Grid>
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
@@ -45,8 +103,21 @@
                            Foreground="#89B4FA"
                            Margin="0,0,0,8" />
                 
+                <!-- Attachments display -->
+                <ItemsControl Grid.Row="1"
+                              ItemsSource="{Binding Attachments}"
+                              ItemTemplate="{StaticResource MessageAttachmentTemplate}"
+                              Visibility="{Binding HasAttachments, Converter={StaticResource BoolToVisibilityConverter}}"
+                              Margin="0,0,0,8">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+                
                 <!-- Message content with markdown -->
-                <mdxaml:MarkdownScrollViewer Grid.Row="1"
+                <mdxaml:MarkdownScrollViewer Grid.Row="2"
                                               Markdown="{Binding Content}"
                                               VerticalScrollBarVisibility="Disabled"
                                               HorizontalScrollBarVisibility="Disabled"
@@ -62,7 +133,7 @@
                 </mdxaml:MarkdownScrollViewer>
                 
                 <!-- Streaming indicator -->
-                <StackPanel Grid.Row="2" 
+                <StackPanel Grid.Row="3" 
                             Orientation="Horizontal" 
                             Margin="0,8,0,0"
                             Visibility="{Binding IsStreaming, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -91,7 +162,7 @@
                 </StackPanel>
                 
                 <!-- Token count and timestamp -->
-                <StackPanel Grid.Row="2" 
+                <StackPanel Grid.Row="3" 
                             Orientation="Horizontal" 
                             HorizontalAlignment="Right"
                             Visibility="{Binding IsStreaming, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}">
@@ -109,4 +180,3 @@
         </Border>
     </Grid>
 </UserControl>
-

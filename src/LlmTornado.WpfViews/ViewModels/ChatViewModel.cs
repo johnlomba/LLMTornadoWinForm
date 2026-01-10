@@ -1,10 +1,12 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LlmTornado.WpfViews.Models;
 using LlmTornado.WpfViews.Services;
+using Microsoft.Win32;
 
 namespace LlmTornado.WpfViews.ViewModels;
 
@@ -53,6 +55,12 @@ public partial class ChatViewModel : ObservableObject
     [ObservableProperty]
     private bool _isToolApprovalVisible;
     
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasPendingAttachments))]
+    [NotifyCanExecuteChangedFor(nameof(SendMessageCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ClearAttachmentsCommand))]
+    private int _pendingAttachmentsCount;
+    
     /// <summary>
     /// Collection of messages in the current conversation.
     /// </summary>
@@ -62,6 +70,16 @@ public partial class ChatViewModel : ObservableObject
     /// History of tool calls in this session.
     /// </summary>
     public ObservableCollection<ToolCallRequest> ToolCallHistory { get; } = [];
+    
+    /// <summary>
+    /// Collection of pending file attachments to send with the next message.
+    /// </summary>
+    public ObservableCollection<FileAttachmentViewModel> PendingAttachments { get; } = [];
+    
+    /// <summary>
+    /// Whether there are pending attachments.
+    /// </summary>
+    public bool HasPendingAttachments => PendingAttachmentsCount > 0;
     
     /// <summary>
     /// Event raised when scrolling to bottom is requested.
@@ -92,16 +110,19 @@ public partial class ChatViewModel : ObservableObject
         _chatService.OnUsageReceived += OnUsageReceived;
         _chatService.OnToolApprovalRequired += OnToolApprovalRequired;
         _chatService.OnToolCompleted += OnToolCompleted;
+        
+        // Track pending attachments count for property change notifications
+        PendingAttachments.CollectionChanged += (_, _) => PendingAttachmentsCount = PendingAttachments.Count;
     }
     
     /// <summary>
     /// Initializes the chat service with settings.
     /// </summary>
-    public void Initialize(SettingsModel settings, string? systemPrompt = null)
+    public async Task InitializeAsync(SettingsModel settings, string? systemPrompt = null)
     {
         try
         {
-            _chatService.Initialize(settings, systemPrompt);
+            await _chatService.InitializeAsync(settings, systemPrompt);
             SystemPromptContent = systemPrompt ?? string.Empty;
             IsInitialized = true;
             StatusText = "Connected";
@@ -153,26 +174,50 @@ public partial class ChatViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanSendMessage))]
     public async Task SendMessageAsync()
     {
-        if (string.IsNullOrWhiteSpace(InputText) || !IsInitialized)
+        var hasText = !string.IsNullOrWhiteSpace(InputText);
+        var hasAttachments = PendingAttachments.Count > 0;
+        
+        if ((!hasText && !hasAttachments) || !IsInitialized)
             return;
         
         var userMessageText = InputText.Trim();
         InputText = string.Empty;
         
-        // Add user message to UI
+        // Capture current attachments and clear the pending list
+        var attachments = PendingAttachments.Select(a => a.Model).ToList();
+        PendingAttachments.Clear();
+        
+        // Add user message to UI with attachments
         var userMessage = new MessageViewModel
         {
             Role = MessageRole.User,
             Content = userMessageText
         };
+        
+        // Add attachment info to the message
+        foreach (var attachment in attachments)
+        {
+            userMessage.AddAttachment(new FileAttachmentModel
+            {
+                Id = attachment.Id,
+                FilePath = attachment.FilePath,
+                FileName = attachment.FileName,
+                FileType = attachment.FileType,
+                FileSize = attachment.FileSize,
+                MimeType = attachment.MimeType,
+                Base64Content = attachment.Base64Content
+            });
+        }
+        
         Messages.Add(userMessage);
         
         // Update conversation title if this is the first message
         if (CurrentConversation != null && Messages.Count == 1)
         {
-            CurrentConversation.Title = userMessageText.Length > 50 
-                ? userMessageText[..50] + "..." 
-                : userMessageText;
+            var title = hasText ? userMessageText : $"[{attachments.Count} attachment(s)]";
+            CurrentConversation.Title = title.Length > 50 
+                ? title[..50] + "..." 
+                : title;
         }
         
         ScrollToBottomRequested?.Invoke();
@@ -180,7 +225,7 @@ public partial class ChatViewModel : ObservableObject
         try
         {
             _requestStopwatch.Restart();
-            await _chatService.SendMessageAsync(userMessageText);
+            await _chatService.SendMessageAsync(userMessageText, attachments);
         }
         catch (Exception ex)
         {
@@ -195,7 +240,7 @@ public partial class ChatViewModel : ObservableObject
     
     private bool CanSendMessage()
     {
-        return !IsProcessing && IsInitialized && !string.IsNullOrWhiteSpace(InputText);
+        return !IsProcessing && IsInitialized && (!string.IsNullOrWhiteSpace(InputText) || HasPendingAttachments);
     }
     
     /// <summary>
@@ -434,6 +479,109 @@ public partial class ChatViewModel : ObservableObject
     public void ClearToolHistory()
     {
         ToolCallHistory.Clear();
+    }
+    
+    #endregion
+    
+    #region Attachment Commands
+    
+    /// <summary>
+    /// Opens a file dialog to add attachments.
+    /// </summary>
+    [RelayCommand]
+    public void AddAttachment()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Filter = FileAttachmentModel.FileDialogFilter,
+            Multiselect = true,
+            Title = "Select files to attach"
+        };
+        
+        if (dialog.ShowDialog() == true)
+        {
+            AddFilesFromPaths(dialog.FileNames);
+        }
+    }
+    
+    /// <summary>
+    /// Removes a specific attachment from the pending list.
+    /// </summary>
+    [RelayCommand]
+    public void RemoveAttachment(FileAttachmentViewModel? attachment)
+    {
+        if (attachment != null)
+        {
+            PendingAttachments.Remove(attachment);
+        }
+    }
+    
+    /// <summary>
+    /// Clears all pending attachments.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(HasPendingAttachments))]
+    public void ClearAttachments()
+    {
+        PendingAttachments.Clear();
+    }
+    
+    /// <summary>
+    /// Adds files from drag-and-drop or paste operations.
+    /// </summary>
+    public void AddFilesFromPaths(IEnumerable<string> filePaths)
+    {
+        foreach (var filePath in filePaths)
+        {
+            try
+            {
+                var (isValid, error) = FileAttachmentViewModel.ValidateFile(filePath);
+                if (!isValid)
+                {
+                    ErrorMessage = $"Cannot add {Path.GetFileName(filePath)}: {error}";
+                    continue;
+                }
+                
+                var attachment = new FileAttachmentViewModel(filePath);
+                attachment.RemoveRequested += OnAttachmentRemoveRequested;
+                PendingAttachments.Add(attachment);
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = $"Failed to add {Path.GetFileName(filePath)}: {ex.Message}";
+            }
+        }
+        
+        // Clear error after a delay if files were added successfully
+        if (PendingAttachments.Count > 0 && ErrorMessage != null)
+        {
+            _ = ClearErrorAfterDelayAsync();
+        }
+    }
+    
+    /// <summary>
+    /// Handles files dropped onto the chat area.
+    /// </summary>
+    public void HandleFileDrop(string[] files)
+    {
+        var supportedFiles = files.Where(f => 
+            FileAttachmentModel.IsSupportedExtension(Path.GetExtension(f)));
+        
+        AddFilesFromPaths(supportedFiles);
+    }
+    
+    private void OnAttachmentRemoveRequested(FileAttachmentViewModel attachment)
+    {
+        attachment.RemoveRequested -= OnAttachmentRemoveRequested;
+        PendingAttachments.Remove(attachment);
+    }
+    
+    private async Task ClearErrorAfterDelayAsync()
+    {
+        await Task.Delay(3000);
+        if (ErrorMessage?.Contains("Cannot add") == true || ErrorMessage?.Contains("Failed to add") == true)
+        {
+            ErrorMessage = null;
+        }
     }
     
     #endregion

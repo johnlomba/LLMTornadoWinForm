@@ -14,6 +14,7 @@ public partial class MainViewModel : ObservableObject
     private readonly ChatService _chatService;
     private readonly ConversationStore _conversationStore;
     private readonly PromptTemplateService _promptTemplateService;
+    private readonly McpServerManager _mcpServerManager;
     
     [ObservableProperty]
     private ChatViewModel _chatViewModel;
@@ -47,9 +48,15 @@ public partial class MainViewModel : ObservableObject
     
     [ObservableProperty]
     private bool _isToolApprovalOpen;
-    
+
     [ObservableProperty]
     private bool _isInitialized;
+
+    [ObservableProperty]
+    private McpServersViewModel _mcpServersViewModel;
+
+    [ObservableProperty]
+    private bool _isMcpServersOpen;
     
     [ObservableProperty]
     private string _connectionStatus = "Not connected";
@@ -78,10 +85,15 @@ public partial class MainViewModel : ObservableObject
         _conversationStore = conversationStore;
         _promptTemplateService = promptTemplateService;
         
+        // Create MCP server manager
+        _mcpServerManager = new McpServerManager();
+        _chatService.SetMcpServerManager(_mcpServerManager);
+        
         ChatViewModel = new ChatViewModel(chatService, conversationStore);
         SettingsViewModel = new SettingsViewModel(conversationStore);
         PromptTemplateViewModel = new PromptTemplateViewModel(promptTemplateService);
         ToolApprovalViewModel = new ToolApprovalViewModel();
+        McpServersViewModel = new McpServersViewModel(_mcpServerManager);
         
         SettingsViewModel.SettingsSaved += OnSettingsSaved;
         ChatViewModel.ConversationSaved += OnConversationSaved;
@@ -156,7 +168,7 @@ public partial class MainViewModel : ObservableObject
         try
         {
             var systemPrompt = SelectedPromptTemplate?.Content;
-            ChatViewModel.Initialize(CurrentSettings, systemPrompt);
+            await ChatViewModel.InitializeAsync(CurrentSettings, systemPrompt);
             
             if (ChatViewModel.IsInitialized)
             {
@@ -280,7 +292,7 @@ public partial class MainViewModel : ObservableObject
         if (value != null && IsInitialized)
         {
             ChatViewModel.SystemPromptContent = value.Content;
-            _chatService.UpdateSystemPrompt(CurrentSettings, value.Content);
+            _ = _chatService.UpdateSystemPromptAsync(CurrentSettings, value.Content);
         }
     }
     
@@ -348,6 +360,25 @@ public partial class MainViewModel : ObservableObject
     public void CloseToolApproval()
     {
         IsToolApprovalOpen = false;
+    }
+
+    /// <summary>
+    /// Opens the MCP Servers dialog.
+    /// </summary>
+    [RelayCommand]
+    public async Task OpenMcpServersAsync()
+    {
+        await McpServersViewModel.LoadServersAsync();
+        IsMcpServersOpen = true;
+    }
+
+    /// <summary>
+    /// Closes the MCP Servers dialog.
+    /// </summary>
+    [RelayCommand]
+    public void CloseMcpServers()
+    {
+        IsMcpServersOpen = false;
     }
 }
 

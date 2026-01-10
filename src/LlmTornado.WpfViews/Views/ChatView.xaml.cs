@@ -1,6 +1,8 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using LlmTornado.WpfViews.Models;
 using LlmTornado.WpfViews.ViewModels;
 
 namespace LlmTornado.WpfViews.Views;
@@ -48,5 +50,52 @@ public partial class ChatView : UserControl
             }
         }
     }
+    
+    private void ChatView_DragOver(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+            var hasValidFiles = files?.Any(f => 
+                FileAttachmentModel.IsSupportedExtension(Path.GetExtension(f))) ?? false;
+            
+            if (hasValidFiles)
+            {
+                e.Effects = DragDropEffects.Copy;
+                DragDropOverlay.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                e.Effects = DragDropEffects.None;
+            }
+        }
+        else
+        {
+            e.Effects = DragDropEffects.None;
+        }
+        
+        e.Handled = true;
+    }
+    
+    private void ChatView_Drop(object sender, DragEventArgs e)
+    {
+        DragDropOverlay.Visibility = Visibility.Collapsed;
+        
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+            if (files != null && DataContext is ChatViewModel vm)
+            {
+                vm.HandleFileDrop(files);
+            }
+        }
+        
+        e.Handled = true;
+    }
+    
+    protected override void OnDragLeave(DragEventArgs e)
+    {
+        base.OnDragLeave(e);
+        DragDropOverlay.Visibility = Visibility.Collapsed;
+    }
 }
-
