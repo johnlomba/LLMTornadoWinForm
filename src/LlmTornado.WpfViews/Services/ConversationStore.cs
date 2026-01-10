@@ -133,11 +133,53 @@ public class ConversationStore
         try
         {
             var json = await File.ReadAllTextAsync(_settingsFilePath);
-            return JsonSerializer.Deserialize<SettingsModel>(json, _jsonOptions) ?? new SettingsModel();
+            var settings = JsonSerializer.Deserialize<SettingsModel>(json, _jsonOptions) ?? new SettingsModel();
+            
+            // Migrate from old format if needed
+            MigrateSettingsIfNeeded(settings);
+            
+            return settings;
         }
         catch
         {
             return new SettingsModel();
+        }
+    }
+    
+    /// <summary>
+    /// Migrates settings from old format to new format.
+    /// </summary>
+    private void MigrateSettingsIfNeeded(SettingsModel settings)
+    {
+        bool needsMigration = false;
+        
+        // Check if we have legacy properties but no new ApiKeys dictionary populated
+        if (settings.ApiKeys.Count == 0)
+        {
+            // Migrate OpenAI key
+            if (!string.IsNullOrWhiteSpace(settings.OpenAiApiKey))
+            {
+                settings.ApiKeys[LlmTornado.Code.LLmProviders.OpenAi] = settings.OpenAiApiKey;
+                needsMigration = true;
+            }
+            
+            // Migrate Azure key
+            if (!string.IsNullOrWhiteSpace(settings.AzureApiKey))
+            {
+                settings.ApiKeys[LlmTornado.Code.LLmProviders.AzureOpenAi] = settings.AzureApiKey;
+                needsMigration = true;
+            }
+        }
+        
+        // If migration occurred, clear legacy properties and save
+        if (needsMigration)
+        {
+            settings.OpenAiApiKey = null;
+            settings.AzureApiKey = null;
+            settings.UseAzure = null;
+            
+            // Save migrated settings
+            _ = Task.Run(async () => await SaveSettingsAsync(settings));
         }
     }
     

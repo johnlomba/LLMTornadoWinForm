@@ -133,9 +133,16 @@ public partial class MainViewModel : ObservableObject
         await SettingsViewModel.LoadSettingsAsync();
         CurrentSettings = SettingsViewModel.ToModel();
         
+        // Load available models from SettingsViewModel (includes discovered + custom)
+        AvailableModels.Clear();
+        foreach (var model in SettingsViewModel.AvailableModels)
+        {
+            AvailableModels.Add(model);
+        }
+        
         // Set selected model
         SelectedModel = AvailableModels.FirstOrDefault(m => m.Id == CurrentSettings.SelectedModelId)
-            ?? AvailableModels.First();
+            ?? AvailableModels.FirstOrDefault();
         
         // Load prompt templates
         var templates = await _promptTemplateService.GetAllTemplatesAsync();
@@ -152,8 +159,8 @@ public partial class MainViewModel : ObservableObject
         // Load conversations
         await RefreshConversationsAsync();
         
-        // Try to initialize chat if API key is set
-        if (!string.IsNullOrWhiteSpace(CurrentSettings.OpenAiApiKey) || CurrentSettings.UseAzure)
+        // Try to initialize chat if at least one provider is configured
+        if (CurrentSettings.ApiKeys.Count > 0)
         {
             await ConnectAsync();
         }
@@ -168,7 +175,7 @@ public partial class MainViewModel : ObservableObject
         try
         {
             var systemPrompt = SelectedPromptTemplate?.Content;
-            await ChatViewModel.InitializeAsync(CurrentSettings, systemPrompt);
+            await ChatViewModel.InitializeAsync(CurrentSettings, systemPrompt, SelectedModel);
             
             if (ChatViewModel.IsInitialized)
             {
@@ -292,7 +299,7 @@ public partial class MainViewModel : ObservableObject
         if (value != null && IsInitialized)
         {
             ChatViewModel.SystemPromptContent = value.Content;
-            _ = _chatService.UpdateSystemPromptAsync(CurrentSettings, value.Content);
+            _ = _chatService.UpdateSystemPromptAsync(CurrentSettings, value.Content, SelectedModel);
         }
     }
     
@@ -320,9 +327,16 @@ public partial class MainViewModel : ObservableObject
     {
         CurrentSettings = settings;
         
+        // Refresh available models from SettingsViewModel
+        AvailableModels.Clear();
+        foreach (var model in SettingsViewModel.AvailableModels)
+        {
+            AvailableModels.Add(model);
+        }
+        
         // Update selected model
         SelectedModel = AvailableModels.FirstOrDefault(m => m.Id == settings.SelectedModelId)
-            ?? AvailableModels.First();
+            ?? AvailableModels.FirstOrDefault();
         
         // Reconnect with new settings
         await ConnectAsync();

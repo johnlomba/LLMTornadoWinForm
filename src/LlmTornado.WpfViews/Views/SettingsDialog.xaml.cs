@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using LlmTornado.WpfViews.ViewModels;
 
 namespace LlmTornado.WpfViews.Views;
 
@@ -21,6 +22,14 @@ public partial class SettingsDialog : UserControl
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
         CloseRequested?.Invoke(this, EventArgs.Empty);
+    }
+    
+    private void ProviderKey_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (DataContext is SettingsViewModel viewModel)
+        {
+            viewModel.OnProviderKeyChanged();
+        }
     }
 }
 

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using LlmTornado.Code;
 using LlmTornado.WpfViews.Models;
 using LlmTornado.WpfViews.Services;
 
@@ -12,18 +13,7 @@ namespace LlmTornado.WpfViews.ViewModels;
 public partial class SettingsViewModel : ObservableObject
 {
     private readonly ConversationStore _conversationStore;
-    
-    [ObservableProperty]
-    private string _openAiApiKey = string.Empty;
-    
-    [ObservableProperty]
-    private string _azureEndpoint = string.Empty;
-    
-    [ObservableProperty]
-    private string _azureApiKey = string.Empty;
-    
-    [ObservableProperty]
-    private bool _useAzure;
+    private readonly ModelDiscoveryService _modelDiscoveryService;
     
     [ObservableProperty]
     private ModelOption? _selectedModel;
@@ -49,15 +39,48 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string? _validationError;
     
+    [ObservableProperty]
+    private bool _isDiscoveringModels;
+    
+    [ObservableProperty]
+    private string? _discoveryStatus;
+    
+    [ObservableProperty]
+    private string _newCustomModelId = string.Empty;
+    
+    [ObservableProperty]
+    private string _newCustomModelDisplayName = string.Empty;
+    
+    [ObservableProperty]
+    private LLmProviders _newCustomModelProvider = LLmProviders.OpenAi;
+    
+    [ObservableProperty]
+    private int _newCustomModelMaxTokens = 4096;
+    
     /// <summary>
-    /// Available model options.
+    /// Provider API key view models.
     /// </summary>
-    public ObservableCollection<ModelOption> AvailableModels { get; } = new(ModelOption.GetDefaultModels());
+    public ObservableCollection<ProviderApiKeyViewModel> ProviderKeys { get; } = new();
+    
+    /// <summary>
+    /// Available model options (discovered + custom).
+    /// </summary>
+    public ObservableCollection<ModelOption> AvailableModels { get; } = new();
+    
+    /// <summary>
+    /// Custom models defined by the user.
+    /// </summary>
+    public ObservableCollection<ModelOption> CustomModels { get; } = new();
     
     /// <summary>
     /// Available themes.
     /// </summary>
     public ObservableCollection<string> AvailableThemes { get; } = ["Dark", "Light"];
+    
+    /// <summary>
+    /// Available providers for custom model creation.
+    /// </summary>
+    public ObservableCollection<LLmProviders> AvailableProviders { get; } = new(ProviderApiKeyModel.GetAllProviders());
     
     /// <summary>
     /// Event raised when settings are saved.
@@ -67,9 +90,22 @@ public partial class SettingsViewModel : ObservableObject
     public SettingsViewModel(ConversationStore conversationStore)
     {
         _conversationStore = conversationStore;
+        _modelDiscoveryService = new ModelDiscoveryService();
         
-        // Set default model
-        SelectedModel = AvailableModels.FirstOrDefault(m => m.Id == "gpt-4");
+        // Initialize provider keys for all providers
+        InitializeProviderKeys();
+    }
+    
+    /// <summary>
+    /// Initializes the provider keys collection with all available providers.
+    /// </summary>
+    private void InitializeProviderKeys()
+    {
+        var allProviders = ProviderApiKeyModel.GetAllProviders();
+        foreach (var provider in allProviders)
+        {
+            ProviderKeys.Add(new ProviderApiKeyViewModel(provider));
+        }
     }
     
     /// <summary>
@@ -79,19 +115,173 @@ public partial class SettingsViewModel : ObservableObject
     {
         var settings = await _conversationStore.LoadSettingsAsync();
         
-        OpenAiApiKey = settings.OpenAiApiKey ?? string.Empty;
-        AzureEndpoint = settings.AzureEndpoint ?? string.Empty;
-        AzureApiKey = settings.AzureApiKey ?? string.Empty;
-        UseAzure = settings.UseAzure;
+        // Load provider keys
+        foreach (var providerKey in ProviderKeys)
+        {
+            if (settings.ApiKeys.TryGetValue(providerKey.Provider, out var apiKey))
+            {
+                providerKey.SetApiKey(apiKey);
+            }
+            
+            // Handle Azure special properties
+            if (providerKey.IsAzure)
+            {
+                providerKey.AzureEndpoint = settings.AzureEndpoint ?? string.Empty;
+                providerKey.AzureOrganization = settings.AzureOrganization ?? string.Empty;
+            }
+        }
+        
+        // Load custom models
+        CustomModels.Clear();
+        foreach (var customModel in settings.CustomModels)
+        {
+            CustomModels.Add(new ModelOption
+            {
+                Id = customModel.Id,
+                DisplayName = customModel.DisplayName,
+                ProviderEnum = customModel.Provider,
+                ApiName = customModel.ApiName,
+                IsCustom = true,
+                MaxContextTokens = customModel.MaxContextTokens
+            });
+        }
+        
+        // Load other settings
         SelectedModel = AvailableModels.FirstOrDefault(m => m.Id == settings.SelectedModelId) 
-            ?? AvailableModels.First();
+            ?? AvailableModels.FirstOrDefault();
         EnableStreaming = settings.EnableStreaming;
         MaxTokens = settings.MaxTokens;
         Temperature = settings.Temperature;
         SaveConversationHistory = settings.SaveConversationHistory;
         Theme = settings.Theme;
         
+        // Refresh available models (includes discovered + custom)
+        await RefreshAvailableModelsAsync();
+        
+        // If selected model is not in available models, try to find it
+        if (SelectedModel == null && !string.IsNullOrEmpty(settings.SelectedModelId))
+        {
+            SelectedModel = AvailableModels.FirstOrDefault(m => m.Id == settings.SelectedModelId);
+        }
+        
         HasChanges = false;
+    }
+    
+    /// <summary>
+    /// Refreshes the available models list by discovering from configured providers.
+    /// </summary>
+    [RelayCommand]
+    public async Task RefreshAvailableModelsAsync()
+    {
+        IsDiscoveringModels = true;
+        DiscoveryStatus = "Discovering models...";
+        
+        try
+        {
+            var settings = ToModel();
+            var discoveredModels = await _modelDiscoveryService.DiscoverAllModelsAsync(settings);
+            
+            // Clear and rebuild available models
+            AvailableModels.Clear();
+            
+            // Add discovered models
+            foreach (var model in discoveredModels)
+            {
+                AvailableModels.Add(model);
+            }
+            
+            // Add custom models
+            foreach (var customModel in CustomModels)
+            {
+                AvailableModels.Add(customModel);
+            }
+            
+            // Add default models if no models found
+            if (AvailableModels.Count == 0)
+            {
+                foreach (var defaultModel in ModelOption.GetDefaultModels())
+                {
+                    AvailableModels.Add(defaultModel);
+                }
+            }
+            
+            DiscoveryStatus = $"Found {discoveredModels.Count} models from configured providers.";
+        }
+        catch (Exception ex)
+        {
+            DiscoveryStatus = $"Error discovering models: {ex.Message}";
+        }
+        finally
+        {
+            IsDiscoveringModels = false;
+        }
+    }
+    
+    /// <summary>
+    /// Adds a custom model.
+    /// </summary>
+    [RelayCommand]
+    public void AddCustomModel()
+    {
+        if (string.IsNullOrWhiteSpace(NewCustomModelId))
+        {
+            ValidationError = "Model ID is required.";
+            return;
+        }
+        
+        if (string.IsNullOrWhiteSpace(NewCustomModelDisplayName))
+        {
+            NewCustomModelDisplayName = NewCustomModelId;
+        }
+        
+        // Check if model already exists
+        if (CustomModels.Any(m => m.Id == NewCustomModelId && m.ProviderEnum == NewCustomModelProvider))
+        {
+            ValidationError = "A custom model with this ID and provider already exists.";
+            return;
+        }
+        
+        var customModel = new ModelOption
+        {
+            Id = NewCustomModelId,
+            DisplayName = NewCustomModelDisplayName,
+            ProviderEnum = NewCustomModelProvider,
+            ApiName = NewCustomModelId,
+            IsCustom = true,
+            MaxContextTokens = NewCustomModelMaxTokens
+        };
+        
+        CustomModels.Add(customModel);
+        AvailableModels.Add(customModel);
+        
+        // Reset form
+        NewCustomModelId = string.Empty;
+        NewCustomModelDisplayName = string.Empty;
+        NewCustomModelProvider = LLmProviders.OpenAi;
+        NewCustomModelMaxTokens = 4096;
+        ValidationError = null;
+        HasChanges = true;
+    }
+    
+    /// <summary>
+    /// Removes a custom model.
+    /// </summary>
+    [RelayCommand]
+    public void RemoveCustomModel(ModelOption? model)
+    {
+        if (model == null || !model.IsCustom)
+            return;
+        
+        CustomModels.Remove(model);
+        AvailableModels.Remove(model);
+        
+        // If this was the selected model, clear selection
+        if (SelectedModel == model)
+        {
+            SelectedModel = AvailableModels.FirstOrDefault();
+        }
+        
+        HasChanges = true;
     }
     
     /// <summary>
@@ -106,6 +296,9 @@ public partial class SettingsViewModel : ObservableObject
         var settings = ToModel();
         await _conversationStore.SaveSettingsAsync(settings);
         
+        // Refresh models after saving
+        await RefreshAvailableModelsAsync();
+        
         HasChanges = false;
         SettingsSaved?.Invoke(settings);
     }
@@ -117,25 +310,33 @@ public partial class SettingsViewModel : ObservableObject
     {
         ValidationError = null;
         
-        if (!UseAzure && string.IsNullOrWhiteSpace(OpenAiApiKey))
+        // Validate at least one provider is configured
+        bool hasConfiguredProvider = false;
+        foreach (var providerKey in ProviderKeys)
         {
-            ValidationError = "OpenAI API key is required.";
-            return false;
-        }
-        
-        if (UseAzure)
-        {
-            if (string.IsNullOrWhiteSpace(AzureEndpoint))
+            var error = providerKey.Validate();
+            if (error != null)
             {
-                ValidationError = "Azure endpoint is required when using Azure.";
+                ValidationError = error;
                 return false;
             }
             
-            if (string.IsNullOrWhiteSpace(AzureApiKey))
+            if (providerKey.IsConfigured)
             {
-                ValidationError = "Azure API key is required when using Azure.";
-                return false;
+                hasConfiguredProvider = true;
             }
+        }
+        
+        if (!hasConfiguredProvider)
+        {
+            ValidationError = "At least one provider API key must be configured.";
+            return false;
+        }
+        
+        if (SelectedModel == null)
+        {
+            ValidationError = "A model must be selected.";
+            return false;
         }
         
         if (MaxTokens < 1 || MaxTokens > 128000)
@@ -158,12 +359,8 @@ public partial class SettingsViewModel : ObservableObject
     /// </summary>
     public SettingsModel ToModel()
     {
-        return new SettingsModel
+        var settings = new SettingsModel
         {
-            OpenAiApiKey = OpenAiApiKey,
-            AzureEndpoint = AzureEndpoint,
-            AzureApiKey = AzureApiKey,
-            UseAzure = UseAzure,
             SelectedModelId = SelectedModel?.Id ?? "gpt-4",
             EnableStreaming = EnableStreaming,
             MaxTokens = MaxTokens,
@@ -171,17 +368,49 @@ public partial class SettingsViewModel : ObservableObject
             SaveConversationHistory = SaveConversationHistory,
             Theme = Theme
         };
+        
+        // Build API keys dictionary
+        foreach (var providerKey in ProviderKeys)
+        {
+            if (providerKey.IsConfigured)
+            {
+                settings.ApiKeys[providerKey.Provider] = providerKey.ApiKey;
+                
+                // Handle Azure special properties
+                if (providerKey.IsAzure)
+                {
+                    settings.AzureEndpoint = providerKey.AzureEndpoint;
+                    settings.AzureOrganization = providerKey.AzureOrganization;
+                }
+            }
+        }
+        
+        // Build custom models list
+        settings.CustomModels = CustomModels.Select(m => new CustomModelOption
+        {
+            Id = m.Id,
+            DisplayName = m.DisplayName,
+            Provider = m.ProviderEnum,
+            ApiName = m.ApiName,
+            MaxContextTokens = m.MaxContextTokens
+        }).ToList();
+        
+        return settings;
     }
     
-    partial void OnOpenAiApiKeyChanged(string value) => HasChanges = true;
-    partial void OnAzureEndpointChanged(string value) => HasChanges = true;
-    partial void OnAzureApiKeyChanged(string value) => HasChanges = true;
-    partial void OnUseAzureChanged(bool value) => HasChanges = true;
+    // Property change handlers
     partial void OnSelectedModelChanged(ModelOption? value) => HasChanges = true;
     partial void OnEnableStreamingChanged(bool value) => HasChanges = true;
     partial void OnMaxTokensChanged(int value) => HasChanges = true;
     partial void OnTemperatureChanged(double value) => HasChanges = true;
     partial void OnSaveConversationHistoryChanged(bool value) => HasChanges = true;
     partial void OnThemeChanged(string value) => HasChanges = true;
+    
+    /// <summary>
+    /// Handles provider key changes.
+    /// </summary>
+    public void OnProviderKeyChanged()
+    {
+        HasChanges = true;
+    }
 }
-

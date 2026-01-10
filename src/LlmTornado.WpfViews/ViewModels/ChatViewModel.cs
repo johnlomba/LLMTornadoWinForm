@@ -118,11 +118,11 @@ public partial class ChatViewModel : ObservableObject
     /// <summary>
     /// Initializes the chat service with settings.
     /// </summary>
-    public async Task InitializeAsync(SettingsModel settings, string? systemPrompt = null)
+    public async Task InitializeAsync(SettingsModel settings, string? systemPrompt = null, ModelOption? selectedModelOption = null)
     {
         try
         {
-            await _chatService.InitializeAsync(settings, systemPrompt);
+            await _chatService.InitializeAsync(settings, systemPrompt, selectedModelOption);
             SystemPromptContent = systemPrompt ?? string.Empty;
             IsInitialized = true;
             StatusText = "Connected";

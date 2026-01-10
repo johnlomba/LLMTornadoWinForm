@@ -6,8 +6,9 @@
              xmlns:ui="http://schemas.modernwpf.com/2019"
              xmlns:vm="clr-namespace:LlmTornado.WpfViews.ViewModels"
              xmlns:converters="clr-namespace:LlmTornado.WpfViews.Converters"
+             xmlns:code="clr-namespace:LlmTornado.Code;assembly=LlmTornado"
              mc:Ignorable="d" 
-             d:DesignHeight="600" d:DesignWidth="500"
+             d:DesignHeight="700" d:DesignWidth="600"
              d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}">
     
     <UserControl.Resources>
@@ -20,9 +21,9 @@
             BorderBrush="#45475A"
             BorderThickness="1"
             Padding="24"
-            MinWidth="480"
-            MaxWidth="600"
-            MaxHeight="700">
+            MinWidth="520"
+            MaxWidth="700"
+            MaxHeight="800">
         <Border.Effect>
             <DropShadowEffect BlurRadius="20" 
                               ShadowDepth="0" 
@@ -67,71 +68,134 @@
                           Margin="0,0,0,20">
                 <StackPanel>
                     <!-- API Configuration Section -->
-                    <TextBlock Text="API Configuration"
+                    <TextBlock Text="API Keys"
                                FontSize="14"
                                FontWeight="SemiBold"
                                Foreground="#89B4FA"
                                Margin="0,0,0,12" />
                     
-                    <!-- Provider toggle -->
-                    <Grid Margin="0,0,0,16">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        
-                        <TextBlock Text="Use Azure OpenAI"
-                                   Foreground="#CDD6F4"
-                                   VerticalAlignment="Center" />
-                        
-                        <ToggleButton Grid.Column="1"
-                                      IsChecked="{Binding UseAzure}"
-                                      Style="{StaticResource {x:Type ToggleButton}}" />
-                    </Grid>
+                    <TextBlock Text="Configure API keys for one or more providers. You can use multiple providers simultaneously."
+                               Foreground="#A6ADC8"
+                               FontSize="11"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,12" />
                     
-                    <!-- OpenAI API Key -->
-                    <StackPanel Margin="0,0,0,16"
-                                Visibility="{Binding UseAzure, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}">
-                        <TextBlock Text="OpenAI API Key"
-                                   Foreground="#A6ADC8"
-                                   FontSize="12"
-                                   Margin="0,0,0,6" />
-                        <TextBox Text="{Binding OpenAiApiKey, UpdateSourceTrigger=PropertyChanged}"
-                                 ui:ControlHelper.PlaceholderText="sk-..."
-                                 Background="#252536"
-                                 Foreground="#CDD6F4"
-                                 BorderBrush="#45475A"
-                                 Padding="12,10" />
-                    </StackPanel>
-                    
-                    <!-- Azure settings -->
-                    <StackPanel Visibility="{Binding UseAzure, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <StackPanel Margin="0,0,0,16">
-                            <TextBlock Text="Azure Endpoint"
-                                       Foreground="#A6ADC8"
-                                       FontSize="12"
-                                       Margin="0,0,0,6" />
-                            <TextBox Text="{Binding AzureEndpoint, UpdateSourceTrigger=PropertyChanged}"
-                                     ui:ControlHelper.PlaceholderText="https://your-resource.openai.azure.com/"
-                                     Background="#252536"
-                                     Foreground="#CDD6F4"
-                                     BorderBrush="#45475A"
-                                     Padding="12,10" />
-                        </StackPanel>
-                        
-                        <StackPanel Margin="0,0,0,16">
-                            <TextBlock Text="Azure API Key"
-                                       Foreground="#A6ADC8"
-                                       FontSize="12"
-                                       Margin="0,0,0,6" />
-                            <TextBox Text="{Binding AzureApiKey, UpdateSourceTrigger=PropertyChanged}"
-                                     ui:ControlHelper.PlaceholderText="Enter your Azure API key"
-                                     Background="#252536"
-                                     Foreground="#CDD6F4"
-                                     BorderBrush="#45475A"
-                                     Padding="12,10" />
-                        </StackPanel>
-                    </StackPanel>
+                    <!-- Provider Keys List -->
+                    <ItemsControl ItemsSource="{Binding ProviderKeys}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:ProviderApiKeyViewModel}">
+                                <Border Background="#252536"
+                                        CornerRadius="8"
+                                        BorderBrush="#45475A"
+                                        BorderThickness="1"
+                                        Margin="0,0,0,8"
+                                        Padding="12">
+                                    <StackPanel>
+                                        <!-- Provider Header -->
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding DisplayName}"
+                                                           Foreground="#CDD6F4"
+                                                           FontWeight="SemiBold"
+                                                           FontSize="13" />
+                                                <TextBlock Text=" ✓"
+                                                           Foreground="#A6E3A1"
+                                                           FontSize="13"
+                                                           Visibility="{Binding IsConfigured, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                            </StackPanel>
+                                            
+                                            <Button Grid.Column="1"
+                                                    Command="{Binding DataContext.RefreshAvailableModelsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    Background="Transparent"
+                                                    Padding="6,4"
+                                                    Margin="8,0,8,0"
+                                                    Cursor="Hand"
+                                                    ToolTip="Refresh Models"
+                                                    Visibility="{Binding IsConfigured, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <TextBlock Text="🔄" FontSize="12" />
+                                            </Button>
+                                            
+                                            <ToggleButton Grid.Column="2"
+                                                          IsChecked="{Binding IsExpanded}"
+                                                          Background="Transparent"
+                                                          Foreground="#A6ADC8"
+                                                          Padding="8,4"
+                                                          Cursor="Hand">
+                                                <TextBlock>
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Text" Value="▼" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                                                    <Setter Property="Text" Value="▲" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </ToggleButton>
+                                        </Grid>
+                                        
+                                        <!-- Expanded Content -->
+                                        <StackPanel Margin="0,8,0,0"
+                                                    Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <!-- API Key Field -->
+                                            <StackPanel Margin="0,0,0,12">
+                                                <TextBlock Text="API Key"
+                                                           Foreground="#A6ADC8"
+                                                           FontSize="11"
+                                                           Margin="0,0,0,4" />
+                                                <TextBox Text="{Binding ApiKey, UpdateSourceTrigger=PropertyChanged}"
+                                                         TextChanged="ProviderKey_TextChanged"
+                                                         ui:ControlHelper.PlaceholderText="Enter API key..."
+                                                         Background="#1E1E2E"
+                                                         Foreground="#CDD6F4"
+                                                         BorderBrush="#45475A"
+                                                         Padding="10,8" />
+                                            </StackPanel>
+                                            
+                                            <!-- Azure-specific fields -->
+                                            <StackPanel Visibility="{Binding IsAzure, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <StackPanel Margin="0,0,0,12">
+                                                    <TextBlock Text="Azure Endpoint"
+                                                               Foreground="#A6ADC8"
+                                                               FontSize="11"
+                                                               Margin="0,0,0,4" />
+                                                    <TextBox Text="{Binding AzureEndpoint, UpdateSourceTrigger=PropertyChanged}"
+                                                             TextChanged="ProviderKey_TextChanged"
+                                                             ui:ControlHelper.PlaceholderText="https://your-resource.openai.azure.com/"
+                                                             Background="#1E1E2E"
+                                                             Foreground="#CDD6F4"
+                                                             BorderBrush="#45475A"
+                                                             Padding="10,8" />
+                                                </StackPanel>
+                                                
+                                                <StackPanel Margin="0,0,0,12">
+                                                    <TextBlock Text="Azure Organization (Optional)"
+                                                               Foreground="#A6ADC8"
+                                                               FontSize="11"
+                                                               Margin="0,0,0,4" />
+                                                    <TextBox Text="{Binding AzureOrganization, UpdateSourceTrigger=PropertyChanged}"
+                                                             TextChanged="ProviderKey_TextChanged"
+                                                             ui:ControlHelper.PlaceholderText="Organization ID (optional)"
+                                                             Background="#1E1E2E"
+                                                             Foreground="#CDD6F4"
+                                                             BorderBrush="#45475A"
+                                                             Padding="10,8" />
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                     
                     <!-- Model Configuration Section -->
                     <TextBlock Text="Model Configuration"
@@ -139,6 +203,47 @@
                                FontWeight="SemiBold"
                                Foreground="#89B4FA"
                                Margin="0,20,0,12" />
+                    
+                    <!-- Refresh Models Button -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <Button Content="Refresh Models"
+                                Command="{Binding RefreshAvailableModelsCommand}"
+                                Padding="12,8"
+                                Background="#45475A"
+                                Foreground="#CDD6F4"
+                                Cursor="Hand"
+                                Margin="0,0,8,0">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="{TemplateBinding Background}"
+                                                        CornerRadius="6"
+                                                        Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#585B70" />
+                                        </Trigger>
+                                        <DataTrigger Binding="{Binding IsDiscoveringModels}" Value="True">
+                                            <Setter Property="IsEnabled" Value="False" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        
+                        <TextBlock Text="{Binding DiscoveryStatus}"
+                                   Foreground="#A6ADC8"
+                                   FontSize="11"
+                                   VerticalAlignment="Center"
+                                   Visibility="{Binding DiscoveryStatus, Converter={StaticResource BoolToVisibilityConverter}}" />
+                    </StackPanel>
                     
                     <!-- Model selector -->
                     <StackPanel Margin="0,0,0,16">
@@ -151,8 +256,188 @@
                                   DisplayMemberPath="DisplayName"
                                   Background="#252536"
                                   Foreground="#CDD6F4"
-                                  BorderBrush="#45475A" />
+                                  BorderBrush="#45475A"
+                                  Padding="10,8" />
                     </StackPanel>
+                    
+                    <!-- Custom Models Section -->
+                    <TextBlock Text="Custom Models"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               Foreground="#89B4FA"
+                               Margin="0,20,0,12" />
+                    
+                    <TextBlock Text="Add custom models for self-hosted or custom endpoints."
+                               Foreground="#A6ADC8"
+                               FontSize="11"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,12" />
+                    
+                    <!-- Add Custom Model Form -->
+                    <Border Background="#252536"
+                            CornerRadius="8"
+                            BorderBrush="#45475A"
+                            BorderThickness="1"
+                            Padding="12"
+                            Margin="0,0,0,12">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition />
+                                    <RowDefinition />
+                                    <RowDefinition />
+                                </Grid.RowDefinitions>
+                                
+                                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,8">
+                                    <TextBlock Text="Model ID"
+                                               Foreground="#A6ADC8"
+                                               FontSize="11"
+                                               Margin="0,0,0,4" />
+                                    <TextBox Text="{Binding NewCustomModelId, UpdateSourceTrigger=PropertyChanged}"
+                                             ui:ControlHelper.PlaceholderText="e.g., my-custom-model"
+                                             Background="#1E1E2E"
+                                             Foreground="#CDD6F4"
+                                             BorderBrush="#45475A"
+                                             Padding="10,8" />
+                                </StackPanel>
+                                
+                                <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,8">
+                                    <TextBlock Text="Display Name"
+                                               Foreground="#A6ADC8"
+                                               FontSize="11"
+                                               Margin="0,0,0,4" />
+                                    <TextBox Text="{Binding NewCustomModelDisplayName, UpdateSourceTrigger=PropertyChanged}"
+                                             ui:ControlHelper.PlaceholderText="Custom Model"
+                                             Background="#1E1E2E"
+                                             Foreground="#CDD6F4"
+                                             BorderBrush="#45475A"
+                                             Padding="10,8" />
+                                </StackPanel>
+                                
+                                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,8">
+                                    <TextBlock Text="Provider"
+                                               Foreground="#A6ADC8"
+                                               FontSize="11"
+                                               Margin="0,0,0,4" />
+                                    <ComboBox ItemsSource="{Binding AvailableProviders}"
+                                              SelectedItem="{Binding NewCustomModelProvider}"
+                                              Background="#1E1E2E"
+                                              Foreground="#CDD6F4"
+                                              BorderBrush="#45475A"
+                                              Padding="10,8" />
+                                </StackPanel>
+                                
+                                <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,8">
+                                    <TextBlock Text="Max Context Tokens"
+                                               Foreground="#A6ADC8"
+                                               FontSize="11"
+                                               Margin="0,0,0,4" />
+                                    <TextBox Text="{Binding NewCustomModelMaxTokens, UpdateSourceTrigger=PropertyChanged}"
+                                             ui:ControlHelper.PlaceholderText="4096"
+                                             Background="#1E1E2E"
+                                             Foreground="#CDD6F4"
+                                             BorderBrush="#45475A"
+                                             Padding="10,8" />
+                                </StackPanel>
+                                
+                                <Button Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
+                                        Content="Add Custom Model"
+                                        Command="{Binding AddCustomModelCommand}"
+                                        Padding="12,8"
+                                        Background="#89B4FA"
+                                        Foreground="#1E1E2E"
+                                        FontWeight="SemiBold"
+                                        Cursor="Hand"
+                                        Margin="0,8,0,0">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{TemplateBinding Background}"
+                                                    CornerRadius="6"
+                                                    Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Background" Value="#B4BEFE" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                    
+                    <!-- Custom Models List -->
+                    <ItemsControl ItemsSource="{Binding CustomModels}" Margin="0,0,0,16">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="#252536"
+                                        CornerRadius="6"
+                                        BorderBrush="#45475A"
+                                        BorderThickness="1"
+                                        Padding="10,8"
+                                        Margin="0,0,0,6">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding DisplayName}"
+                                                       Foreground="#CDD6F4"
+                                                       FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding Id, StringFormat='ID: {0}'}"
+                                                       Foreground="#A6ADC8"
+                                                       FontSize="11" />
+                                            <TextBlock Foreground="#A6ADC8"
+                                                       FontSize="11">
+                                                <Run Text="Provider: " />
+                                                <Run Text="{Binding ProviderEnum}" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                        
+                                        <Button Grid.Column="1"
+                                                Command="{Binding DataContext.RemoveCustomModelCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"
+                                                Content="Remove"
+                                                Padding="8,4"
+                                                Background="#F38BA8"
+                                                Foreground="#1E1E2E"
+                                                Cursor="Hand"
+                                                VerticalAlignment="Center">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}"
+                                                            CornerRadius="4"
+                                                            Padding="{TemplateBinding Padding}">
+                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter Property="Background" Value="#F9A8B8" />
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    
+                    <!-- Other Settings Section -->
+                    <TextBlock Text="Other Settings"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               Foreground="#89B4FA"
+                               Margin="0,20,0,12" />
                     
                     <!-- Enable streaming -->
                     <Grid Margin="0,0,0,16">
@@ -285,4 +570,3 @@
         </Grid>
     </Border>
 </UserControl>
-

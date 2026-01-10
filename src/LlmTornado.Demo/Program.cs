@@ -199,7 +199,16 @@ public class Program
 
     static void ListDemos()
     {
-        Console.Clear();
+        try
+        {
+            Console.Clear();
+        }
+        catch (IOException)
+        {
+            // Console handle may not be available in some environments
+            // Just continue without clearing
+        }
+        
         Console.WriteLine($"Found {DemoDict.Count} demos.");
 
         int i = 1;

@@ -1,4 +1,6 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
+using LlmTornado.Code;
 
 namespace LlmTornado.WpfViews.Models;
 
@@ -8,9 +10,11 @@ namespace LlmTornado.WpfViews.Models;
 public class SettingsModel
 {
     /// <summary>
-    /// OpenAI API key.
+    /// API keys for each provider. Key is the provider enum, value is the API key.
+    /// For Azure, the key should be stored with special handling for endpoint.
     /// </summary>
-    public string? OpenAiApiKey { get; set; }
+    [JsonConverter(typeof(DictionaryJsonConverter<LLmProviders, string>))]
+    public Dictionary<LLmProviders, string> ApiKeys { get; set; } = new();
     
     /// <summary>
     /// Azure OpenAI endpoint (if using Azure).
@@ -18,14 +22,14 @@ public class SettingsModel
     public string? AzureEndpoint { get; set; }
     
     /// <summary>
-    /// Azure OpenAI API key (if using Azure).
+    /// Azure organization key (if using Azure).
     /// </summary>
-    public string? AzureApiKey { get; set; }
+    public string? AzureOrganization { get; set; }
     
     /// <summary>
-    /// Whether to use Azure OpenAI instead of OpenAI.
+    /// Custom models defined by the user.
     /// </summary>
-    public bool UseAzure { get; set; }
+    public List<CustomModelOption> CustomModels { get; set; } = new();
     
     /// <summary>
     /// Selected model ID.
@@ -61,6 +65,121 @@ public class SettingsModel
     /// Theme preference (Dark/Light).
     /// </summary>
     public string Theme { get; set; } = "Dark";
+    
+    // Legacy properties for backward compatibility (marked as obsolete)
+    /// <summary>
+    /// Legacy OpenAI API key. Use ApiKeys[LLmProviders.OpenAi] instead.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? OpenAiApiKey { get; set; }
+    
+    /// <summary>
+    /// Legacy Azure API key. Use ApiKeys[LLmProviders.AzureOpenAi] instead.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? AzureApiKey { get; set; }
+    
+    /// <summary>
+    /// Legacy flag for Azure. Check ApiKeys.ContainsKey(LLmProviders.AzureOpenAi) instead.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? UseAzure { get; set; }
+}
+
+/// <summary>
+/// Custom model option defined by the user.
+/// </summary>
+public class CustomModelOption
+{
+    /// <summary>
+    /// Model ID/name.
+    /// </summary>
+    public string Id { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Display name for the model.
+    /// </summary>
+    public string DisplayName { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Provider for this model.
+    /// </summary>
+    public LLmProviders Provider { get; set; }
+    
+    /// <summary>
+    /// Provider-specific API name (if different from Id).
+    /// </summary>
+    public string? ApiName { get; set; }
+    
+    /// <summary>
+    /// Maximum context tokens.
+    /// </summary>
+    public int MaxContextTokens { get; set; } = 4096;
+}
+
+/// <summary>
+/// JSON converter for Dictionary with enum keys.
+/// </summary>
+public class DictionaryJsonConverter<TKey, TValue> : JsonConverter<Dictionary<TKey, TValue>> where TKey : struct, Enum
+{
+    public override Dictionary<TKey, TValue> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType != JsonTokenType.StartObject)
+        {
+            throw new JsonException();
+        }
+
+        var dictionary = new Dictionary<TKey, TValue>();
+
+        while (reader.Read())
+        {
+            if (reader.TokenType == JsonTokenType.EndObject)
+            {
+                return dictionary;
+            }
+
+            if (reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException();
+            }
+
+            var propertyName = reader.GetString();
+            if (string.IsNullOrEmpty(propertyName))
+            {
+                throw new JsonException();
+            }
+
+            if (!Enum.TryParse<TKey>(propertyName, ignoreCase: true, out var key))
+            {
+                // Skip unknown enum values
+                reader.Read();
+                reader.Skip();
+                continue;
+            }
+
+            reader.Read();
+            var value = JsonSerializer.Deserialize<TValue>(ref reader, options);
+            if (value != null)
+            {
+                dictionary[key] = value;
+            }
+        }
+
+        throw new JsonException();
+    }
+
+    public override void Write(Utf8JsonWriter writer, Dictionary<TKey, TValue> value, JsonSerializerOptions options)
+    {
+        writer.WriteStartObject();
+
+        foreach (var kvp in value)
+        {
+            writer.WritePropertyName(kvp.Key.ToString());
+            JsonSerializer.Serialize(writer, kvp.Value, options);
+        }
+
+        writer.WriteEndObject();
+    }
 }
 
 /// <summary>
@@ -70,19 +189,50 @@ public class ModelOption
 {
     public string Id { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
-    public string Provider { get; set; } = "OpenAI";
+    
+    /// <summary>
+    /// Provider as string (for backward compatibility with old UI bindings).
+    /// </summary>
+    [JsonIgnore]
+    public string Provider 
+    { 
+        get => ProviderEnum.ToString();
+        set 
+        {
+            if (Enum.TryParse<LLmProviders>(value, ignoreCase: true, out var parsed))
+            {
+                ProviderEnum = parsed;
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Provider as enum.
+    /// </summary>
+    public LLmProviders ProviderEnum { get; set; } = LLmProviders.OpenAi;
+    
+    /// <summary>
+    /// Whether this is a custom model defined by the user.
+    /// </summary>
+    public bool IsCustom { get; set; }
+    
+    /// <summary>
+    /// Provider-specific API name (if different from Id).
+    /// </summary>
+    public string? ApiName { get; set; }
+    
     public int MaxContextTokens { get; set; }
     
     public static List<ModelOption> GetDefaultModels()
     {
         return
         [
-            new ModelOption { Id = "gpt-4o", DisplayName = "GPT-4o", Provider = "OpenAI", MaxContextTokens = 128000 },
-            new ModelOption { Id = "gpt-4o-mini", DisplayName = "GPT-4o Mini", Provider = "OpenAI", MaxContextTokens = 128000 },
-            new ModelOption { Id = "gpt-4-turbo", DisplayName = "GPT-4 Turbo", Provider = "OpenAI", MaxContextTokens = 128000 },
-            new ModelOption { Id = "gpt-3.5-turbo", DisplayName = "GPT-3.5 Turbo", Provider = "OpenAI", MaxContextTokens = 16385 },
-            new ModelOption { Id = "o3-mini", DisplayName = "o3 Mini", Provider = "OpenAI", MaxContextTokens = 128000 },
-            new ModelOption { Id = "o4-mini", DisplayName = "o4 Mini", Provider = "OpenAI", MaxContextTokens = 200000 }
+            new ModelOption { Id = "gpt-4o", DisplayName = "GPT-4o", ProviderEnum = LLmProviders.OpenAi, MaxContextTokens = 128000 },
+            new ModelOption { Id = "gpt-4o-mini", DisplayName = "GPT-4o Mini", ProviderEnum = LLmProviders.OpenAi, MaxContextTokens = 128000 },
+            new ModelOption { Id = "gpt-4-turbo", DisplayName = "GPT-4 Turbo", ProviderEnum = LLmProviders.OpenAi, MaxContextTokens = 128000 },
+            new ModelOption { Id = "gpt-3.5-turbo", DisplayName = "GPT-3.5 Turbo", ProviderEnum = LLmProviders.OpenAi, MaxContextTokens = 16385 },
+            new ModelOption { Id = "o3-mini", DisplayName = "o3 Mini", ProviderEnum = LLmProviders.OpenAi, MaxContextTokens = 128000 },
+            new ModelOption { Id = "o4-mini", DisplayName = "o4 Mini", ProviderEnum = LLmProviders.OpenAi, MaxContextTokens = 200000 }
         ];
     }
 }

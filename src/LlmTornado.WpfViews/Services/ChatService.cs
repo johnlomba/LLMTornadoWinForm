@@ -100,46 +100,67 @@ public class ChatService
     /// <summary>
     /// Initializes the chat service with the given settings.
     /// </summary>
-    public async Task InitializeAsync(SettingsModel settings, string? systemPrompt = null)
+    public async Task InitializeAsync(SettingsModel settings, string? systemPrompt = null, ModelOption? selectedModelOption = null)
     {
-        if (string.IsNullOrWhiteSpace(settings.OpenAiApiKey) && !settings.UseAzure)
+        // Build list of provider authentications from settings
+        var authList = new List<ProviderAuthentication>();
+        
+        foreach (var kvp in settings.ApiKeys)
         {
-            throw new InvalidOperationException("OpenAI API key is required.");
+            if (!string.IsNullOrWhiteSpace(kvp.Value))
+            {
+                // Handle Azure specially
+                if (kvp.Key == LLmProviders.AzureOpenAi)
+                {
+                    if (!string.IsNullOrWhiteSpace(settings.AzureEndpoint))
+                    {
+                        authList.Add(new ProviderAuthentication(kvp.Key, kvp.Value, settings.AzureOrganization));
+                    }
+                }
+                else
+                {
+                    authList.Add(new ProviderAuthentication(kvp.Key, kvp.Value));
+                }
+            }
         }
         
-        if (settings.UseAzure && (string.IsNullOrWhiteSpace(settings.AzureEndpoint) || string.IsNullOrWhiteSpace(settings.AzureApiKey)))
+        if (authList.Count == 0)
         {
-            throw new InvalidOperationException("Azure endpoint and API key are required when using Azure.");
+            throw new InvalidOperationException("At least one provider API key must be configured.");
         }
         
-        // Create the TornadoApi instance
-        if (settings.UseAzure)
+        // Create the TornadoApi instance with multiple providers (like demo's ConnectMulti)
+        _api = new TornadoApi(authList);
+        
+        // Determine the provider and model name for the selected model
+        LLmProviders modelProvider = LLmProviders.OpenAi;
+        string modelName = settings.SelectedModelId;
+        
+        if (selectedModelOption != null)
         {
-            _api = new TornadoApi(LLmProviders.AzureOpenAi, settings.AzureApiKey!);
+            modelProvider = selectedModelOption.ProviderEnum;
+            modelName = selectedModelOption.ApiName ?? selectedModelOption.Id;
         }
         else
         {
-            _api = new TornadoApi(LLmProviders.OpenAi, settings.OpenAiApiKey!);
+            // Try to infer provider from model name
+            var inferredProvider = ChatModel.GetProvider(modelName);
+            if (inferredProvider.HasValue)
+            {
+                modelProvider = inferredProvider.Value;
+            }
         }
         
         // Create chat options
         var chatOptions = new ChatRequest
         {
-            Model = settings.SelectedModelId,
+            Model = modelName,
             MaxTokens = settings.MaxTokens,
             Temperature = settings.Temperature
         };
         
-        // Get the model based on selection
-        var model = settings.SelectedModelId switch
-        {
-            "gpt-4o-mini" => ChatModel.OpenAi.Gpt4.OMini,
-            "gpt-4-turbo" => ChatModel.OpenAi.Gpt4.Turbo,
-            "gpt-3.5-turbo" => ChatModel.OpenAi.Gpt35.Turbo,
-            "o3-mini" => ChatModel.OpenAi.O3.Mini,
-            "o4-mini" => ChatModel.OpenAi.O4.V4Mini,
-            _ => ChatModel.OpenAi.Gpt4.O
-        };
+        // Create the model - use ChatModel constructor with provider
+        var model = new ChatModel(modelName, modelProvider);
         
         // Build tool permission dictionary
         var toolPermissionRequired = new Dictionary<string, bool>
@@ -412,10 +433,10 @@ public class ChatService
     /// <summary>
     /// Reinitializes with a new system prompt.
     /// </summary>
-    public async Task UpdateSystemPromptAsync(SettingsModel settings, string systemPrompt)
+    public async Task UpdateSystemPromptAsync(SettingsModel settings, string systemPrompt, ModelOption? selectedModelOption = null)
     {
         ClearConversation();
-        await InitializeAsync(settings, systemPrompt);
+        await InitializeAsync(settings, systemPrompt, selectedModelOption);
     }
     
     /// <summary>
