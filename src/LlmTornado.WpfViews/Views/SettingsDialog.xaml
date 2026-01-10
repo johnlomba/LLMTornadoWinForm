@@ -1,0 +1,288 @@
+<UserControl x:Class="LlmTornado.WpfViews.Views.SettingsDialog"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:ui="http://schemas.modernwpf.com/2019"
+             xmlns:vm="clr-namespace:LlmTornado.WpfViews.ViewModels"
+             xmlns:converters="clr-namespace:LlmTornado.WpfViews.Converters"
+             mc:Ignorable="d" 
+             d:DesignHeight="600" d:DesignWidth="500"
+             d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}">
+    
+    <UserControl.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <converters:InverseBoolConverter x:Key="InverseBoolConverter" />
+    </UserControl.Resources>
+    
+    <Border Background="#1E1E2E" 
+            CornerRadius="12" 
+            BorderBrush="#45475A"
+            BorderThickness="1"
+            Padding="24"
+            MinWidth="480"
+            MaxWidth="600"
+            MaxHeight="700">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="20" 
+                              ShadowDepth="0" 
+                              Opacity="0.5" 
+                              Color="Black" />
+        </Border.Effect>
+        
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            
+            <!-- Header -->
+            <Grid Grid.Row="0" Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                
+                <TextBlock Text="Settings"
+                           FontSize="22"
+                           FontWeight="SemiBold"
+                           Foreground="#CDD6F4" />
+                
+                <Button Grid.Column="1"
+                        Click="CloseButton_Click"
+                        Background="Transparent"
+                        Padding="8"
+                        Cursor="Hand"
+                        ToolTip="Close">
+                    <TextBlock Text="&#x2715;" 
+                               FontSize="16" 
+                               Foreground="#A6ADC8" />
+                </Button>
+            </Grid>
+            
+            <!-- Settings content -->
+            <ScrollViewer Grid.Row="1" 
+                          VerticalScrollBarVisibility="Auto"
+                          Margin="0,0,0,20">
+                <StackPanel>
+                    <!-- API Configuration Section -->
+                    <TextBlock Text="API Configuration"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               Foreground="#89B4FA"
+                               Margin="0,0,0,12" />
+                    
+                    <!-- Provider toggle -->
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        
+                        <TextBlock Text="Use Azure OpenAI"
+                                   Foreground="#CDD6F4"
+                                   VerticalAlignment="Center" />
+                        
+                        <ToggleButton Grid.Column="1"
+                                      IsChecked="{Binding UseAzure}"
+                                      Style="{StaticResource {x:Type ToggleButton}}" />
+                    </Grid>
+                    
+                    <!-- OpenAI API Key -->
+                    <StackPanel Margin="0,0,0,16"
+                                Visibility="{Binding UseAzure, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}">
+                        <TextBlock Text="OpenAI API Key"
+                                   Foreground="#A6ADC8"
+                                   FontSize="12"
+                                   Margin="0,0,0,6" />
+                        <TextBox Text="{Binding OpenAiApiKey, UpdateSourceTrigger=PropertyChanged}"
+                                 ui:ControlHelper.PlaceholderText="sk-..."
+                                 Background="#252536"
+                                 Foreground="#CDD6F4"
+                                 BorderBrush="#45475A"
+                                 Padding="12,10" />
+                    </StackPanel>
+                    
+                    <!-- Azure settings -->
+                    <StackPanel Visibility="{Binding UseAzure, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <StackPanel Margin="0,0,0,16">
+                            <TextBlock Text="Azure Endpoint"
+                                       Foreground="#A6ADC8"
+                                       FontSize="12"
+                                       Margin="0,0,0,6" />
+                            <TextBox Text="{Binding AzureEndpoint, UpdateSourceTrigger=PropertyChanged}"
+                                     ui:ControlHelper.PlaceholderText="https://your-resource.openai.azure.com/"
+                                     Background="#252536"
+                                     Foreground="#CDD6F4"
+                                     BorderBrush="#45475A"
+                                     Padding="12,10" />
+                        </StackPanel>
+                        
+                        <StackPanel Margin="0,0,0,16">
+                            <TextBlock Text="Azure API Key"
+                                       Foreground="#A6ADC8"
+                                       FontSize="12"
+                                       Margin="0,0,0,6" />
+                            <TextBox Text="{Binding AzureApiKey, UpdateSourceTrigger=PropertyChanged}"
+                                     ui:ControlHelper.PlaceholderText="Enter your Azure API key"
+                                     Background="#252536"
+                                     Foreground="#CDD6F4"
+                                     BorderBrush="#45475A"
+                                     Padding="12,10" />
+                        </StackPanel>
+                    </StackPanel>
+                    
+                    <!-- Model Configuration Section -->
+                    <TextBlock Text="Model Configuration"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               Foreground="#89B4FA"
+                               Margin="0,20,0,12" />
+                    
+                    <!-- Model selector -->
+                    <StackPanel Margin="0,0,0,16">
+                        <TextBlock Text="Model"
+                                   Foreground="#A6ADC8"
+                                   FontSize="12"
+                                   Margin="0,0,0,6" />
+                        <ComboBox ItemsSource="{Binding AvailableModels}"
+                                  SelectedItem="{Binding SelectedModel}"
+                                  DisplayMemberPath="DisplayName"
+                                  Background="#252536"
+                                  Foreground="#CDD6F4"
+                                  BorderBrush="#45475A" />
+                    </StackPanel>
+                    
+                    <!-- Enable streaming -->
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        
+                        <TextBlock Text="Enable Streaming"
+                                   Foreground="#CDD6F4"
+                                   VerticalAlignment="Center" />
+                        
+                        <ToggleButton Grid.Column="1"
+                                      IsChecked="{Binding EnableStreaming}"
+                                      Style="{StaticResource {x:Type ToggleButton}}" />
+                    </Grid>
+                    
+                    <!-- Max tokens -->
+                    <StackPanel Margin="0,0,0,16">
+                        <TextBlock Text="{Binding MaxTokens, StringFormat='Max Tokens: {0}'}"
+                                   Foreground="#A6ADC8"
+                                   FontSize="12"
+                                   Margin="0,0,0,6" />
+                        <Slider Value="{Binding MaxTokens}"
+                                Minimum="256"
+                                Maximum="128000"
+                                TickFrequency="256"
+                                IsSnapToTickEnabled="True"
+                                Background="#252536"
+                                Foreground="#89B4FA" />
+                    </StackPanel>
+                    
+                    <!-- Temperature -->
+                    <StackPanel Margin="0,0,0,16">
+                        <TextBlock Text="{Binding Temperature, StringFormat='Temperature: {0:F1}'}"
+                                   Foreground="#A6ADC8"
+                                   FontSize="12"
+                                   Margin="0,0,0,6" />
+                        <Slider Value="{Binding Temperature}"
+                                Minimum="0"
+                                Maximum="2"
+                                TickFrequency="0.1"
+                                IsSnapToTickEnabled="True"
+                                Background="#252536"
+                                Foreground="#89B4FA" />
+                    </StackPanel>
+                    
+                    <!-- Save conversation history -->
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        
+                        <TextBlock Text="Save Conversation History"
+                                   Foreground="#CDD6F4"
+                                   VerticalAlignment="Center" />
+                        
+                        <ToggleButton Grid.Column="1"
+                                      IsChecked="{Binding SaveConversationHistory}"
+                                      Style="{StaticResource {x:Type ToggleButton}}" />
+                    </Grid>
+                    
+                    <!-- Validation error -->
+                    <Border Background="#F38BA8"
+                            CornerRadius="8"
+                            Padding="12"
+                            Margin="0,8,0,0"
+                            Visibility="{Binding ValidationError, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="{Binding ValidationError}"
+                                   Foreground="#1E1E2E"
+                                   TextWrapping="Wrap"
+                                   FontWeight="Medium" />
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+            
+            <!-- Footer buttons -->
+            <StackPanel Grid.Row="2" 
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right">
+                <Button Content="Cancel"
+                        Click="CloseButton_Click"
+                        Margin="0,0,12,0"
+                        Padding="20,10"
+                        Background="#45475A"
+                        Foreground="#CDD6F4"
+                        Cursor="Hand">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Border" 
+                                    Background="{TemplateBinding Background}" 
+                                    CornerRadius="8" 
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Border" Property="Background" Value="#585B70" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+                
+                <Button Content="Save"
+                        Command="{Binding SaveSettingsCommand}"
+                        Padding="20,10"
+                        Background="#89B4FA"
+                        Foreground="#1E1E2E"
+                        FontWeight="SemiBold"
+                        Cursor="Hand">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Border" 
+                                    Background="{TemplateBinding Background}" 
+                                    CornerRadius="8" 
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Border" Property="Background" Value="#B4BEFE" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>
+

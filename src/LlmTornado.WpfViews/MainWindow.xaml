@@ -1,0 +1,191 @@
+<Window x:Class="LlmTornado.WpfViews.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ui="http://schemas.modernwpf.com/2019"
+        xmlns:views="clr-namespace:LlmTornado.WpfViews.Views"
+        xmlns:vm="clr-namespace:LlmTornado.WpfViews.ViewModels"
+        xmlns:converters="clr-namespace:LlmTornado.WpfViews.Converters"
+        mc:Ignorable="d"
+        Title="LLM Tornado Chat"
+        Height="750" Width="1200"
+        MinHeight="500" MinWidth="800"
+        WindowStartupLocation="CenterScreen"
+        ui:WindowHelper.UseModernWindowStyle="True"
+        Background="#1E1E2E"
+        d:DataContext="{d:DesignInstance Type=vm:MainViewModel}">
+    
+    <Window.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <converters:InverseBoolConverter x:Key="InverseBoolConverter" />
+    </Window.Resources>
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        
+        <!-- Top toolbar -->
+        <Border Grid.Row="0" 
+                Background="#181825" 
+                Padding="16,12"
+                BorderThickness="0,0,0,1"
+                BorderBrush="#45475A">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                
+                <!-- Left side: Configuration -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <TextBlock Text="Configuration" 
+                               Foreground="#A6ADC8" 
+                               VerticalAlignment="Center"
+                               FontSize="13"
+                               Margin="0,0,12,0" />
+                    
+                    <!-- Model selector -->
+                    <ComboBox ItemsSource="{Binding AvailableModels}"
+                              SelectedItem="{Binding SelectedModel}"
+                              DisplayMemberPath="DisplayName"
+                              Width="150"
+                              ui:ControlHelper.PlaceholderText="Select Model"
+                              Margin="0,0,8,0" />
+                    
+                    <!-- Settings button -->
+                    <Button Command="{Binding OpenSettingsCommand}"
+                            ToolTip="Settings"
+                            Padding="8"
+                            Background="Transparent"
+                            Cursor="Hand">
+                        <TextBlock Text="&#x2699;" FontSize="18" Foreground="#A6ADC8" />
+                    </Button>
+                </StackPanel>
+                
+                <!-- Center: System Prompt -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
+                    <TextBlock Text="System Prompt" 
+                               Foreground="#A6ADC8" 
+                               VerticalAlignment="Center"
+                               FontSize="13"
+                               Margin="0,0,12,0" />
+                    
+                    <ComboBox ItemsSource="{Binding PromptTemplates}"
+                              SelectedItem="{Binding SelectedPromptTemplate}"
+                              DisplayMemberPath="Name"
+                              Width="200"
+                              ui:ControlHelper.PlaceholderText="Select Template" />
+                </StackPanel>
+                
+                <!-- Right side: Connection status -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <Ellipse Width="8" Height="8" 
+                             Margin="0,0,8,0"
+                             VerticalAlignment="Center">
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse">
+                                <Setter Property="Fill" Value="#F38BA8" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsInitialized}" Value="True">
+                                        <Setter Property="Fill" Value="#A6E3A1" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
+                    <TextBlock Text="{Binding ConnectionStatus}" 
+                               Foreground="#A6ADC8"
+                               VerticalAlignment="Center"
+                               FontSize="13" />
+                </StackPanel>
+            </Grid>
+        </Border>
+        
+        <!-- Main content area -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="280" MinWidth="200" MaxWidth="400" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            
+            <!-- Sidebar -->
+            <views:ConversationList Grid.Column="0" 
+                                    DataContext="{Binding}" />
+            
+            <!-- Splitter -->
+            <GridSplitter Grid.Column="1" 
+                          Width="1" 
+                          Background="#45475A"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Stretch" />
+            
+            <!-- Chat view -->
+            <views:ChatView Grid.Column="2" 
+                            DataContext="{Binding ChatViewModel}" />
+        </Grid>
+        
+        <!-- Status bar -->
+        <Border Grid.Row="2" 
+                Background="#181825" 
+                Padding="16,8"
+                BorderThickness="0,1,0,0"
+                BorderBrush="#45475A">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                
+                <!-- Status text -->
+                <TextBlock Grid.Column="0"
+                           Text="{Binding ChatViewModel.StatusText}"
+                           Foreground="#6C7086"
+                           FontSize="12"
+                           VerticalAlignment="Center" />
+                
+                <!-- Response time -->
+                <TextBlock Grid.Column="1"
+                           Foreground="#6C7086"
+                           FontSize="12"
+                           VerticalAlignment="Center"
+                           Margin="16,0">
+                    <TextBlock.Text>
+                        <MultiBinding StringFormat="{}{0} ms">
+                            <Binding Path="ChatViewModel.ResponseTimeMs" />
+                        </MultiBinding>
+                    </TextBlock.Text>
+                </TextBlock>
+                
+                <!-- Token count -->
+                <TextBlock Grid.Column="2"
+                           Foreground="#6C7086"
+                           FontSize="12"
+                           VerticalAlignment="Center">
+                    <TextBlock.Text>
+                        <MultiBinding StringFormat="{}{0} tokens">
+                            <Binding Path="ChatViewModel.TotalTokens" />
+                        </MultiBinding>
+                    </TextBlock.Text>
+                </TextBlock>
+            </Grid>
+        </Border>
+        
+        <!-- Settings overlay -->
+        <Grid Grid.RowSpan="3"
+              Visibility="{Binding IsSettingsOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="#80000000" />
+            <views:SettingsDialog DataContext="{Binding SettingsViewModel}"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  CloseRequested="SettingsDialog_CloseRequested" />
+        </Grid>
+    </Grid>
+</Window>
+

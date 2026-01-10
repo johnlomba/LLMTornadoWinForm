@@ -24,6 +24,8 @@
     <Project Path="LlmTornado.Agents.Native/LlmTornado.Agents.Native.csproj" />
     <Project Path="LlmTornado.Agents.Samples/LlmTornado.Agents.Samples.csproj" />
     <Project Path="LlmTornado.Agents/LlmTornado.Agents.csproj" />
+    <Project Path="LlmTornado.TornadoViews/LlmTornado.TornadoViews.csproj" />
+    <Project Path="LlmTornado.WpfViews/LlmTornado.WpfViews.csproj" />
   </Folder>
   <Folder Name="/Vector DBs/">
     <Project Path="LlmTornado.VectorDatabases.ChromaDB/LlmTornado.VectorDatabases.ChromaDB.csproj" />
