@@ -349,16 +349,10 @@ public partial class ChatViewModel : ObservableObject
             IsToolApprovalVisible = true;
             
             // Update status
-            StatusText = $"Tool called: {request.ToolName}";
+            StatusText = $"⚠️ Tool requesting approval: {request.ToolName}";
             
             // Raise event for the main view model to show dialog
             ToolApprovalRequested?.Invoke(request);
-            
-            // Add tool call indicator to the streaming message
-            if (_currentStreamingMessage != null)
-            {
-                _currentStreamingMessage.AppendContent($"\n\n🔧 **Tool: {request.ToolName}**\n");
-            }
         });
     }
     
@@ -378,12 +372,59 @@ public partial class ChatViewModel : ObservableObject
             if (_currentStreamingMessage != null)
             {
                 var preview = result.Length > 200 ? result[..200] + "..." : result;
-                _currentStreamingMessage.AppendContent($"```\n{preview}\n```\n\n");
+                _currentStreamingMessage.AppendContent($"\n🔧 **Tool Result ({toolName}):**\n```\n{preview}\n```\n\n");
             }
             
             IsToolApprovalVisible = false;
             PendingToolCall = null;
+            StatusText = $"Tool completed: {toolName}";
         });
+    }
+    
+    /// <summary>
+    /// Approves the pending tool call.
+    /// </summary>
+    [RelayCommand]
+    public void ApproveToolCall()
+    {
+        if (PendingToolCall?.ApprovalTask != null)
+        {
+            // Add indicator to streaming message
+            if (_currentStreamingMessage != null)
+            {
+                _currentStreamingMessage.AppendContent($"\n\n✅ **Tool Approved: {PendingToolCall.ToolName}**\n");
+            }
+            
+            StatusText = $"Executing tool: {PendingToolCall.ToolName}";
+            IsToolApprovalVisible = false;
+            
+            // Complete the task to allow execution
+            PendingToolCall.ApprovalTask.TrySetResult(true);
+        }
+    }
+    
+    /// <summary>
+    /// Denies the pending tool call.
+    /// </summary>
+    [RelayCommand]
+    public void DenyToolCall()
+    {
+        if (PendingToolCall?.ApprovalTask != null)
+        {
+            // Add indicator to streaming message
+            if (_currentStreamingMessage != null)
+            {
+                _currentStreamingMessage.AppendContent($"\n\n❌ **Tool Denied: {PendingToolCall.ToolName}**\n");
+            }
+            
+            StatusText = $"Tool denied: {PendingToolCall.ToolName}";
+            PendingToolCall.Status = ToolApprovalStatus.Denied;
+            IsToolApprovalVisible = false;
+            
+            // Complete the task with false to deny execution
+            PendingToolCall.ApprovalTask.TrySetResult(false);
+            PendingToolCall = null;
+        }
     }
     
     /// <summary>
@@ -393,15 +434,6 @@ public partial class ChatViewModel : ObservableObject
     public void ClearToolHistory()
     {
         ToolCallHistory.Clear();
-    }
-    
-    /// <summary>
-    /// Dismisses the tool approval dialog.
-    /// </summary>
-    [RelayCommand]
-    public void DismissToolApproval()
-    {
-        IsToolApprovalVisible = false;
     }
     
     #endregion

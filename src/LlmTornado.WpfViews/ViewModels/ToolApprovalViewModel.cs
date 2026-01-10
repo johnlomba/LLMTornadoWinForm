@@ -25,9 +25,9 @@ public partial class ToolApprovalViewModel : ObservableObject
     public ObservableCollection<ToolCallRequest> ToolCallHistory { get; } = [];
     
     /// <summary>
-    /// Event raised when the dialog should be closed.
+    /// Event raised when the dialog should be closed with approval result.
     /// </summary>
-    public event Action? DialogClosed;
+    public event Action<bool>? ApprovalCompleted;
     
     /// <summary>
     /// Shows a tool call request for approval.
@@ -48,11 +48,13 @@ public partial class ToolApprovalViewModel : ObservableObject
         if (CurrentRequest != null)
         {
             CurrentRequest.Status = ToolApprovalStatus.Approved;
+            
+            // Complete the TaskCompletionSource to allow tool execution
             CurrentRequest.ApprovalTask?.TrySetResult(true);
         }
         
         IsVisible = false;
-        DialogClosed?.Invoke();
+        ApprovalCompleted?.Invoke(true);
     }
     
     /// <summary>
@@ -64,11 +66,13 @@ public partial class ToolApprovalViewModel : ObservableObject
         if (CurrentRequest != null)
         {
             CurrentRequest.Status = ToolApprovalStatus.Denied;
+            
+            // Complete the TaskCompletionSource to deny tool execution
             CurrentRequest.ApprovalTask?.TrySetResult(false);
         }
         
         IsVisible = false;
-        DialogClosed?.Invoke();
+        ApprovalCompleted?.Invoke(false);
     }
     
     /// <summary>

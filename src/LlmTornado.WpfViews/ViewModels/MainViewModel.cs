@@ -87,7 +87,7 @@ public partial class MainViewModel : ObservableObject
         ChatViewModel.ConversationSaved += OnConversationSaved;
         ChatViewModel.ToolApprovalRequested += OnToolApprovalRequested;
         PromptTemplateViewModel.TemplatesUpdated += OnTemplatesUpdated;
-        ToolApprovalViewModel.DialogClosed += OnToolApprovalDialogClosed;
+        ToolApprovalViewModel.ApprovalCompleted += OnToolApprovalCompleted;
     }
     
     /// <summary>
@@ -328,11 +328,17 @@ public partial class MainViewModel : ObservableObject
     }
     
     /// <summary>
-    /// Handles tool approval dialog being closed.
+    /// Handles tool approval being completed (approved or denied).
     /// </summary>
-    private void OnToolApprovalDialogClosed()
+    private void OnToolApprovalCompleted(bool approved)
     {
         IsToolApprovalOpen = false;
+        
+        // Update the chat view model's pending state
+        if (!approved)
+        {
+            ChatViewModel.StatusText = "Tool execution denied by user";
+        }
     }
     
     /// <summary>

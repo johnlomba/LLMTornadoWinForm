@@ -10,6 +10,8 @@ using LlmTornado.WpfViews.Models;
 using Newtonsoft.Json.Converters;
 using System.ComponentModel;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
+
 namespace LlmTornado.WpfViews.Services;
 
 /// <summary>
@@ -23,6 +25,7 @@ public class ChatService
     private TornadoApi? _api;
     private bool _isProcessing;
     private DateTime _requestStartTime;
+    private ToolCallRequest? _pendingToolRequest;
     
     /// <summary>
     /// Whether tool calls require user approval before execution.
@@ -70,7 +73,8 @@ public class ChatService
     public event Action<string, string>? OnToolCompleted;
     
     /// <summary>
-    /// Raised when a tool call requires approval. Returns the ToolCallRequest for the UI to handle.
+    /// Raised when a tool call requires approval BEFORE execution.
+    /// The ToolCallRequest.ApprovalTask should be completed with true (approve) or false (deny).
     /// </summary>
     public event Action<ToolCallRequest>? OnToolApprovalRequired;
     
@@ -145,11 +149,76 @@ public class ChatService
         // Create runtime configuration
         var config = new SingletonRuntimeConfiguration(_agent)
         {
-            OnRuntimeEvent = HandleRuntimeEventAsync
+            OnRuntimeEvent = HandleRuntimeEventAsync,
+            OnRuntimeRequestEvent = HandleToolPermissionRequestAsync
         };
         
         // Create the runtime
         _runtime = new ChatRuntime(config);
+    }
+    
+    /// <summary>
+    /// Handles tool permission requests from LLMTornado.
+    /// This is called BEFORE the tool executes - returning false will deny execution.
+    /// </summary>
+    /// <param name="requestMessage">Message in format "Tool: {name}\nArguments: {args}"</param>
+    /// <returns>True to approve, false to deny</returns>
+    private async ValueTask<bool> HandleToolPermissionRequestAsync(string requestMessage)
+    {
+        // Parse the request message
+        var (toolName, arguments) = ParseToolPermissionRequest(requestMessage);
+        
+        // Create a tool call request
+        var request = new ToolCallRequest
+        {
+            ToolName = toolName,
+            Arguments = arguments,
+            Status = ToolApprovalStatus.Pending,
+            RequestedAt = DateTime.UtcNow,
+            ApprovalTask = new TaskCompletionSource<bool>()
+        };
+        
+        _pendingToolRequest = request;
+        
+        // Raise the event on the UI thread and wait for approval
+        await Application.Current.Dispatcher.InvokeAsync(() =>
+        {
+            OnToolApprovalRequired?.Invoke(request);
+        });
+        
+        // Wait for the user to approve or deny
+        var approved = await request.ApprovalTask.Task;
+        
+        // Update status based on user's decision
+        request.Status = approved ? ToolApprovalStatus.Approved : ToolApprovalStatus.Denied;
+        _pendingToolRequest = null;
+        
+        return approved;
+    }
+    
+    /// <summary>
+    /// Parses the tool permission request message.
+    /// </summary>
+    private static (string ToolName, string Arguments) ParseToolPermissionRequest(string message)
+    {
+        var toolName = "Unknown";
+        var arguments = "{}";
+        
+        // Parse "Tool: {name}\nArguments: {args}" format
+        var lines = message.Split('\n');
+        foreach (var line in lines)
+        {
+            if (line.StartsWith("Tool:", StringComparison.OrdinalIgnoreCase))
+            {
+                toolName = line.Substring(5).Trim();
+            }
+            else if (line.StartsWith("Arguments:", StringComparison.OrdinalIgnoreCase))
+            {
+                arguments = line.Substring(10).Trim();
+            }
+        }
+        
+        return (toolName, arguments);
     }
 
     [JsonConverter(typeof(StringEnumConverter))]
@@ -319,26 +388,13 @@ public class ChatService
     }
     
     /// <summary>
-    /// Handles tool invocation events - extracts tool name and arguments.
+    /// Handles tool invocation events - fires after permission is granted and tool is executing.
     /// </summary>
     private void HandleToolInvoked(AgentRunnerToolInvokedEvent toolEvent)
     {
         var toolName = toolEvent.ToolCalled.Name ?? "Unknown";
-        var arguments = toolEvent.ToolCalled.Arguments ?? "{}";
         
-        // Create a tool call request with the details
-        var request = new ToolCallRequest
-        {
-            ToolName = toolName,
-            Arguments = arguments,
-            Status = ToolApprovalStatus.Approved, // Already invoked at this point
-            RequestedAt = DateTime.UtcNow
-        };
-        
-        // Raise the approval event (for display purposes)
-        OnToolApprovalRequired?.Invoke(request);
-        
-        // Also raise the simple invoked event
+        // Tool is now executing (permission was already granted via HandleToolPermissionRequestAsync)
         OnToolInvoked?.Invoke(toolName);
     }
     
