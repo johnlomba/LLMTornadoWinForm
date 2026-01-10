@@ -239,7 +239,20 @@
                         </Border>
                         
                         <!-- Server configuration form -->
-                        <StackPanel Visibility="{Binding SelectedServer, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <StackPanel>
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsAddingNew}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding SelectedServer, Converter={StaticResource BoolToVisibilityConverter}}" Value="Visible">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
                             <TextBlock Text="Server Configuration"
                                        FontSize="16"
                                        FontWeight="SemiBold"
@@ -253,11 +266,23 @@
                                            FontSize="12"
                                            Margin="0,0,0,6" />
                                 <TextBox Text="{Binding NewServerLabel, UpdateSourceTrigger=PropertyChanged}"
-                                         IsReadOnly="{Binding IsEditing, Converter={StaticResource InverseBoolConverter}}"
                                          Background="#252536"
                                          Foreground="#CDD6F4"
                                          BorderBrush="#45475A"
-                                         Padding="12,10" />
+                                         Padding="12,10">
+                                    <TextBox.Style>
+                                        <Style TargetType="TextBox">
+                                            <!-- Editable when adding new, read-only when viewing/editing existing -->
+                                            <Setter Property="IsReadOnly" Value="False" />
+                                            <Style.Triggers>
+                                                <!-- Read-only when NOT adding new (i.e., viewing/editing existing server) -->
+                                                <DataTrigger Binding="{Binding IsAddingNew}" Value="False">
+                                                    <Setter Property="IsReadOnly" Value="True" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBox.Style>
+                                </TextBox>
                             </StackPanel>
                             
                             <!-- Transport Type -->
@@ -519,8 +544,22 @@
                                    FontSize="14"
                                    HorizontalAlignment="Center"
                                    VerticalAlignment="Center"
-                                   Margin="0,40,0,0"
-                                   Visibility="{Binding SelectedServer, Converter={StaticResource InverseBoolConverter}}" />
+                                   Margin="0,40,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding SelectedServer, Converter={StaticResource BoolToVisibilityConverter}}" Value="Collapsed" />
+                                                <Condition Binding="{Binding IsAddingNew}" Value="False" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                     </StackPanel>
                 </ScrollViewer>
             </Grid>

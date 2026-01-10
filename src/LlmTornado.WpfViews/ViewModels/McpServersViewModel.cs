@@ -29,6 +29,9 @@ public partial class McpServersViewModel : ObservableObject
     [ObservableProperty]
     private bool _isEditing;
 
+    [ObservableProperty]
+    private bool _isAddingNew;
+
     /// <summary>
     /// Collection of server view models.
     /// </summary>
@@ -156,9 +159,11 @@ public partial class McpServersViewModel : ObservableObject
     public void AddServer()
     {
         IsEditing = false;
+        IsAddingNew = true;
         SelectedServer = null;
         EditingServer = new McpServerDefinition { Type = "stdio" };
         NewServerLabel = string.Empty;
+        ErrorMessage = null;
     }
 
     /// <summary>
@@ -184,6 +189,7 @@ public partial class McpServersViewModel : ObservableObject
             // Select the saved server
             SelectedServer = Servers.FirstOrDefault(s => s.Label == NewServerLabel);
             IsEditing = false;
+            IsAddingNew = false;
         }
         catch (Exception ex)
         {
@@ -210,6 +216,7 @@ public partial class McpServersViewModel : ObservableObject
     public void CancelEdit()
     {
         IsEditing = false;
+        IsAddingNew = false;
         if (SelectedServer != null)
         {
             EditingServer = new McpServerDefinition
@@ -224,6 +231,11 @@ public partial class McpServersViewModel : ObservableObject
                 AllowedTools = SelectedServer.Definition.AllowedTools?.ToArray()
             };
             NewServerLabel = SelectedServer.Label;
+        }
+        else
+        {
+            EditingServer = new McpServerDefinition();
+            NewServerLabel = string.Empty;
         }
     }
 
