@@ -51,4 +51,5 @@
   <Project Path="LlmTornado.Tests/LlmTornado.Tests.csproj" />
   <Project Path="LlmTornado.Toolkit/LlmTornado.Toolkit.csproj" />
   <Project Path="LlmTornado/LlmTornado.csproj" />
+  <Project Path="SmarterViews.Desktop/SmarterViews.Desktop.csproj" />
 </Solution>
