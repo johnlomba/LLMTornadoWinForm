@@ -65,9 +65,9 @@ public partial class AiQueryView : UserControl
 
     private void McpButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_viewModel != null && _viewModel.RefreshMcpServersCommand.CanExecute(null))
+        if (_viewModel != null && _viewModel.OpenMcpServersCommand.CanExecute(null))
         {
-            _viewModel.RefreshMcpServersCommand.Execute(null);
+            _viewModel.OpenMcpServersCommand.Execute(null);
         }
     }
 

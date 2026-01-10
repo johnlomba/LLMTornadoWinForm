@@ -957,6 +957,28 @@ public partial class AiQueryViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private async Task OpenMcpServersAsync()
+    {
+        try
+        {
+            var mcpServersViewModel = new McpServersViewModel(_mcpServerManager);
+            var mcpServersWindow = new Views.McpServersWindow(mcpServersViewModel);
+            mcpServersWindow.Owner = Application.Current.MainWindow;
+            
+            mcpServersWindow.ShowDialog();
+            
+            // After dialog closes, refresh MCP status and reinitialize chat
+            UpdateMcpStatus();
+            await ReinitializeChatWithSchemaAsync();
+            ResultStatusText = $"MCP servers: {ConnectedMcpServers} connected, {AvailableMcpTools} tools available";
+        }
+        catch (Exception ex)
+        {
+            SetError($"Failed to open MCP settings: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
     private async Task SaveConversationAsync()
     {
         if (Messages.Count == 0)

@@ -198,7 +198,7 @@
                             Padding="10,6"
                             Margin="0,0,8,0"
                             Cursor="Hand"
-                            ToolTip="Refresh MCP servers">
+                            ToolTip="Configure MCP servers">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
                                 <Border x:Name="Border" Background="#1976D2" CornerRadius="6" Padding="{TemplateBinding Padding}">
