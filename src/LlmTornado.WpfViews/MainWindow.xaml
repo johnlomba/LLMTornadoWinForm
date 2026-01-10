@@ -80,6 +80,16 @@
                               DisplayMemberPath="Name"
                               Width="200"
                               ui:ControlHelper.PlaceholderText="Select Template" />
+                    
+                    <!-- Edit prompts button -->
+                    <Button Command="{Binding OpenPromptEditorCommand}"
+                            ToolTip="Edit System Prompts"
+                            Padding="8"
+                            Margin="8,0,0,0"
+                            Background="Transparent"
+                            Cursor="Hand">
+                        <TextBlock Text="&#x270E;" FontSize="16" Foreground="#A6ADC8" />
+                    </Button>
                 </StackPanel>
                 
                 <!-- Right side: Connection status -->
@@ -185,6 +195,17 @@
                                   HorizontalAlignment="Center"
                                   VerticalAlignment="Center"
                                   CloseRequested="SettingsDialog_CloseRequested" />
+        </Grid>
+        
+        <!-- Prompt Template Editor overlay -->
+        <Grid Grid.RowSpan="3"
+              Visibility="{Binding IsPromptEditorOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="#80000000" />
+            <views:PromptTemplateDialog DataContext="{Binding PromptTemplateViewModel}"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        CloseRequested="PromptTemplateDialog_CloseRequested"
+                                        TemplateSelected="PromptTemplateDialog_TemplateSelected" />
         </Grid>
     </Grid>
 </Window>

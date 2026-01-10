@@ -1,39 +1,91 @@
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+
 namespace LlmTornado.WpfViews.Models;
 
 /// <summary>
 /// Represents a system prompt template.
 /// </summary>
-public class PromptTemplate
+public class PromptTemplate : INotifyPropertyChanged
 {
+    private string _id = Guid.NewGuid().ToString();
+    private string _name = string.Empty;
+    private string _content = string.Empty;
+    private string? _description;
+    private bool _isBuiltIn;
+    private DateTime _createdAt = DateTime.UtcNow;
+    
     /// <summary>
     /// Unique identifier for the template.
     /// </summary>
-    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string Id
+    {
+        get => _id;
+        set => SetField(ref _id, value);
+    }
     
     /// <summary>
     /// Display name for the template.
     /// </summary>
-    public string Name { get; set; } = string.Empty;
+    public string Name
+    {
+        get => _name;
+        set => SetField(ref _name, value);
+    }
     
     /// <summary>
     /// The actual system prompt content.
     /// </summary>
-    public string Content { get; set; } = string.Empty;
+    public string Content
+    {
+        get => _content;
+        set => SetField(ref _content, value);
+    }
     
     /// <summary>
     /// Optional description of what this template is for.
     /// </summary>
-    public string? Description { get; set; }
+    public string? Description
+    {
+        get => _description;
+        set => SetField(ref _description, value);
+    }
     
     /// <summary>
     /// Whether this is a built-in template or user-created.
     /// </summary>
-    public bool IsBuiltIn { get; set; }
+    public bool IsBuiltIn
+    {
+        get => _isBuiltIn;
+        set => SetField(ref _isBuiltIn, value);
+    }
     
     /// <summary>
     /// When the template was created.
     /// </summary>
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt
+    {
+        get => _createdAt;
+        set => SetField(ref _createdAt, value);
+    }
+    
+    /// <summary>
+    /// Event raised when a property changes.
+    /// </summary>
+    public event PropertyChangedEventHandler? PropertyChanged;
+    
+    protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
+    protected bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value)) return false;
+        field = value;
+        OnPropertyChanged(propertyName);
+        return true;
+    }
 
     /// <summary>
     /// Creates default built-in templates.
@@ -93,4 +145,3 @@ public class PromptTemplate
         ];
     }
 }
-

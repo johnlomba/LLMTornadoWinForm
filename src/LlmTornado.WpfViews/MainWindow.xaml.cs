@@ -37,5 +37,15 @@ public partial class MainWindow : Window
     {
         _viewModel.CloseSettingsCommand.Execute(null);
     }
+    
+    private void PromptTemplateDialog_CloseRequested(object sender, EventArgs e)
+    {
+        _viewModel.ClosePromptEditorCommand.Execute(null);
+    }
+    
+    private void PromptTemplateDialog_TemplateSelected(object sender, Models.PromptTemplate template)
+    {
+        _viewModel.SelectPromptFromEditor(template);
+    }
 }
 

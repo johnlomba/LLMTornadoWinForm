@@ -37,6 +37,12 @@ public partial class MainViewModel : ObservableObject
     private bool _isSettingsOpen;
     
     [ObservableProperty]
+    private bool _isPromptEditorOpen;
+    
+    [ObservableProperty]
+    private PromptTemplateViewModel _promptTemplateViewModel;
+    
+    [ObservableProperty]
     private bool _isInitialized;
     
     [ObservableProperty]
@@ -68,9 +74,11 @@ public partial class MainViewModel : ObservableObject
         
         ChatViewModel = new ChatViewModel(chatService, conversationStore);
         SettingsViewModel = new SettingsViewModel(conversationStore);
+        PromptTemplateViewModel = new PromptTemplateViewModel(promptTemplateService);
         
         SettingsViewModel.SettingsSaved += OnSettingsSaved;
         ChatViewModel.ConversationSaved += OnConversationSaved;
+        PromptTemplateViewModel.TemplatesUpdated += OnTemplatesUpdated;
     }
     
     /// <summary>
@@ -79,6 +87,20 @@ public partial class MainViewModel : ObservableObject
     private async void OnConversationSaved()
     {
         await RefreshConversationsAsync();
+    }
+    
+    /// <summary>
+    /// Handles templates being updated.
+    /// </summary>
+    private async void OnTemplatesUpdated()
+    {
+        // Refresh the templates list in the dropdown
+        var templates = await _promptTemplateService.GetAllTemplatesAsync();
+        PromptTemplates.Clear();
+        foreach (var template in templates)
+        {
+            PromptTemplates.Add(template);
+        }
     }
     
     /// <summary>
@@ -157,6 +179,34 @@ public partial class MainViewModel : ObservableObject
     public void CloseSettings()
     {
         IsSettingsOpen = false;
+    }
+    
+    /// <summary>
+    /// Opens the prompt template editor.
+    /// </summary>
+    [RelayCommand]
+    public async Task OpenPromptEditorAsync()
+    {
+        await PromptTemplateViewModel.LoadTemplatesAsync();
+        IsPromptEditorOpen = true;
+    }
+    
+    /// <summary>
+    /// Closes the prompt template editor.
+    /// </summary>
+    [RelayCommand]
+    public void ClosePromptEditor()
+    {
+        IsPromptEditorOpen = false;
+    }
+    
+    /// <summary>
+    /// Selects a prompt template from the editor.
+    /// </summary>
+    public void SelectPromptFromEditor(PromptTemplate template)
+    {
+        SelectedPromptTemplate = template;
+        IsPromptEditorOpen = false;
     }
     
     /// <summary>

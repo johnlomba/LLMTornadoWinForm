@@ -32,24 +32,51 @@ public class RoleToColorConverter : IValueConverter
 }
 
 /// <summary>
-/// Converts boolean to visibility.
+/// Converts boolean or nullable object to visibility.
+/// If the value is a bool, returns Visible if true, Collapsed if false.
+/// If the value is null, returns Collapsed; otherwise Visible.
+/// ConverterParameter can be set to "Invert" to reverse the behavior.
 /// </summary>
 public class BoolToVisibilityConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
+        bool isVisible;
+        
         if (value is bool boolValue)
         {
-            bool invert = parameter?.ToString() == "Invert";
-            bool visible = invert ? !boolValue : boolValue;
-            return visible ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+            isVisible = boolValue;
         }
-        return System.Windows.Visibility.Collapsed;
+        else
+        {
+            // For nullable objects, treat non-null as visible
+            isVisible = value != null;
+        }
+        
+        // Check for invert parameter
+        if (parameter is string paramStr && paramStr.Equals("Invert", StringComparison.OrdinalIgnoreCase))
+        {
+            isVisible = !isVisible;
+        }
+        
+        return isVisible ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        if (value is System.Windows.Visibility visibility)
+        {
+            bool result = visibility == System.Windows.Visibility.Visible;
+            
+            if (parameter is string paramStr && paramStr.Equals("Invert", StringComparison.OrdinalIgnoreCase))
+            {
+                result = !result;
+            }
+            
+            return result;
+        }
+        
+        return false;
     }
 }
 
@@ -76,11 +103,22 @@ public class RoleToAlignmentConverter : IValueConverter
 }
 
 /// <summary>
-/// Inverts a boolean value.
+/// Inverts a boolean value. Also handles nullable booleans, treating null as false.
 /// </summary>
 public class InverseBoolConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is bool boolValue)
+        {
+            return !boolValue;
+        }
+        
+        // Treat null as false, inverted = true
+        return true;
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is bool boolValue)
         {
@@ -88,14 +126,30 @@ public class InverseBoolConverter : IValueConverter
         }
         return false;
     }
+}
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+/// <summary>
+/// Converts null/non-null values to boolean.
+/// Returns false if value is null, true if not null.
+/// Use ConverterParameter "Invert" to reverse this behavior.
+/// </summary>
+public class NullToBoolConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        if (value is bool boolValue)
+        bool result = value != null;
+        
+        if (parameter is string paramStr && paramStr.Equals("Invert", StringComparison.OrdinalIgnoreCase))
         {
-            return !boolValue;
+            result = !result;
         }
-        return false;
+        
+        return result;
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotSupportedException("NullToBoolConverter does not support ConvertBack.");
     }
 }
 
