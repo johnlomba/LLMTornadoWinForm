@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using LlmTornado.Chat;
 using LlmTornado.ChatFunctions;
+using LlmTornado.Code;
 
 namespace LlmTornado.TornadoViews;
 
@@ -15,11 +16,11 @@ namespace LlmTornado.TornadoViews;
 /// </summary>
 public class ChatWindowControl : UserControl
 {
-    private readonly FlowLayoutPanel _messagesPanel;
-    private readonly TextBox _inputTextBox;
-    private readonly Button _sendButton;
-    private readonly Button _cancelButton;
-    private readonly Panel _inputPanel;
+    private FlowLayoutPanel _messagesPanel;
+    private TextBox _inputTextBox;
+    private Button _sendButton;
+    private Button _cancelButton;
+    private Panel _inputPanel;
     
     private TornadoApi? _runtime;
     private ChatMessageControl? _streamingAssistant;
@@ -172,14 +173,15 @@ public class ChatWindowControl : UserControl
             var chatRequest = new ChatRequest
             {
                 Model = "gpt-4",
-                Messages = new[]
+                Messages = new List<ChatMessage>
                 {
-                    new ChatMessage(ChatMessageRole.User, message)
-                }
+                    new ChatMessage(ChatMessageRoles.User, message)
+                },
+                CancellationToken = cancellationToken
             };
 
             // Stream response - Addresses Issue 3 (proper async/await)
-            await foreach (var delta in _runtime.Chat.StreamChatEnumerableAsync(chatRequest, cancellationToken))
+            await foreach (var delta in _runtime.Chat.StreamChatEnumerable(chatRequest))
             {
                 if (cancellationToken.IsCancellationRequested)
                     break;
@@ -198,11 +200,8 @@ public class ChatWindowControl : UserControl
                 }
             }
 
-            // Finalize the message
-            if (_streamingAssistant != null && !cancellationToken.IsCancellationRequested)
-            {
-                _streamingAssistant.MarkdownText = _streamingBuffer.ToString();
-            }
+            // Message is already complete from incremental streaming
+            // No need to re-render the entire message here
         }
         catch (OperationCanceledException)
         {

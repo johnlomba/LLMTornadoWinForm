@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using LlmTornado.Code;
 
 namespace LlmTornado.TornadoViews;
 
@@ -97,7 +98,7 @@ public partial class Form1 : Form
         try
         {
             // Initialize the Tornado API
-            var api = new TornadoApi(new TornadoAuthOptions(LLmProviders.OpenAi, apiKey));
+            var api = new TornadoApi(LLmProviders.OpenAi, apiKey);
             _chatWindow?.SetRuntime(api);
 
             MessageBox.Show("Connected successfully! You can now start chatting.",

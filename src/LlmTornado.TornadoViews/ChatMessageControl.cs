@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -14,12 +15,14 @@ public class ChatMessageControl : UserControl
     private readonly Label _roleLabel;
     private readonly Panel _contentPanel;
 
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public string Role
     {
         get => _roleLabel.Text;
         set => _roleLabel.Text = value;
     }
 
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public string MarkdownText
     {
         get => _contentTextBox.Text;
@@ -80,7 +83,13 @@ public class ChatMessageControl : UserControl
 
     private void ContentTextBox_ContentsResized(object? sender, ContentsResizedEventArgs e)
     {
-        AdjustHeight();
+        // Use the actual measured size from the event
+        if (e.NewRectangle.Height > 0)
+        {
+            _contentTextBox.Height = e.NewRectangle.Height + 5; // Small padding
+            _contentPanel.Height = _contentTextBox.Bottom + 10;
+            this.Height = _contentPanel.Height + 10;
+        }
     }
 
     private void AdjustHeight()
@@ -88,21 +97,10 @@ public class ChatMessageControl : UserControl
         if (_contentTextBox.Text.Length == 0)
         {
             _contentTextBox.Height = 20;
+            _contentPanel.Height = _contentTextBox.Bottom + 10;
+            this.Height = _contentPanel.Height + 10;
         }
-        else
-        {
-            // Calculate required height based on content
-            var size = TextRenderer.MeasureText(_contentTextBox.Text, _contentTextBox.Font,
-                new Size(_contentTextBox.Width, int.MaxValue),
-                TextFormatFlags.WordBreak | TextFormatFlags.TextBoxControl);
-
-            // Add some padding for better readability
-            _contentTextBox.Height = Math.Max(size.Height + 20, 20);
-        }
-
-        // Update panel height
-        _contentPanel.Height = _contentTextBox.Bottom + 10;
-        this.Height = _contentPanel.Height + 10;
+        // Otherwise let ContentsResized handle it
     }
 
     protected override void OnResize(EventArgs e)
