@@ -102,10 +102,6 @@ public class ModelDiscoveryService
                     api = new TornadoApi(authList);
                     // Merge custom API configuration
                     api.ApiUrlFormat = customApi.ApiUrlFormat;
-                    if (customApi.Authentications.TryGetValue(LLmProviders.Custom, out var customAuth))
-                    {
-                        api.Authentications.TryAdd(LLmProviders.Custom, customAuth);
-                    }
                 }
                 else
                 {

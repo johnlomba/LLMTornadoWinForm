@@ -299,7 +299,8 @@
                                    Foreground="#A6ADC8"
                                    FontSize="12"
                                    Margin="0,0,0,6" />
-                        <ComboBox ItemsSource="{Binding FilteredModels}"
+                        <ComboBox x:Name="ModelComboBox"
+                                  ItemsSource="{Binding FilteredModels}"
                                   SelectedItem="{Binding SelectedModel}"
                                   DisplayMemberPath="DisplayName"
                                   IsEditable="True"
@@ -310,12 +311,11 @@
                                   Foreground="#CDD6F4"
                                   BorderBrush="#45475A"
                                   Padding="10,8"
-                                  MaxDropDownHeight="300">
+                                  MaxDropDownHeight="300"
+                                  SelectionChanged="ModelComboBox_SelectionChanged">
                             <ComboBox.Style>
                                 <Style TargetType="ComboBox">
                                     <Setter Property="Text" Value="{Binding ModelSearchText, UpdateSourceTrigger=PropertyChanged}" />
-                                    <EventSetter Event="TextChanged" Handler="ModelComboBox_TextChanged" />
-                                    <EventSetter Event="SelectionChanged" Handler="ModelComboBox_SelectionChanged" />
                                 </Style>
                             </ComboBox.Style>
                             <ComboBox.ItemContainerStyle>

@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using LlmTornado.WpfViews.ViewModels;
 
 namespace LlmTornado.WpfViews.Views;
@@ -17,6 +18,35 @@ public partial class SettingsDialog : UserControl
     public SettingsDialog()
     {
         InitializeComponent();
+        Loaded += SettingsDialog_Loaded;
+    }
+    
+    private void SettingsDialog_Loaded(object sender, RoutedEventArgs e)
+    {
+        // Hook up TextChanged event to the inner TextBox of the editable ComboBox
+        if (ModelComboBox != null)
+        {
+            var textBox = FindVisualChild<TextBox>(ModelComboBox);
+            if (textBox != null)
+            {
+                textBox.TextChanged += ModelComboBox_TextChanged;
+            }
+        }
+    }
+    
+    private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T typedChild)
+                return typedChild;
+            
+            var result = FindVisualChild<T>(child);
+            if (result != null)
+                return result;
+        }
+        return null;
     }
     
     private void CloseButton_Click(object sender, RoutedEventArgs e)

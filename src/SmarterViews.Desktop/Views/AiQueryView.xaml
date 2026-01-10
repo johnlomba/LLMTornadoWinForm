@@ -1,0 +1,884 @@
+<UserControl x:Class="SmarterViews.Desktop.Views.AiQueryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:vm="clr-namespace:SmarterViews.Desktop.ViewModels"
+             xmlns:chatVm="clr-namespace:SmarterViews.Desktop.ViewModels.Chat"
+             xmlns:chatViews="clr-namespace:SmarterViews.Desktop.Views.Chat"
+             xmlns:converters="clr-namespace:SmarterViews.Desktop.Converters"
+             mc:Ignorable="d" 
+             d:DesignHeight="700" d:DesignWidth="1400"
+             d:DataContext="{d:DesignInstance vm:AiQueryViewModel, IsDesignTimeCreatable=True}">
+
+    <UserControl.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <converters:BoolToColorConverter x:Key="BoolToColorConverter" />
+        <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
+        <converters:InverseBoolConverter x:Key="InverseBoolConverter" />
+        <converters:RoleToColorConverter x:Key="RoleToColorConverter" />
+        <converters:RoleToAlignmentConverter x:Key="RoleToAlignmentConverter" />
+        
+        <!-- Large, accessible button style -->
+        <Style x:Key="LargeButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="42"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="20,10"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="6" 
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Opacity" Value="0.9"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.5"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Primary action button (green) -->
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource LargeButtonStyle}">
+            <Setter Property="Background" Value="#2E7D32"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+
+        <!-- Secondary action button (blue) -->
+        <Style x:Key="SecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource LargeButtonStyle}">
+            <Setter Property="Background" Value="#1565C0"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+
+        <!-- Danger button (red) -->
+        <Style x:Key="DangerButtonStyle" TargetType="Button" BasedOn="{StaticResource LargeButtonStyle}">
+            <Setter Property="Background" Value="#C62828"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Padding" Value="12,6"/>
+        </Style>
+
+        <!-- Accessible ComboBox style -->
+        <Style x:Key="LargeComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#BDBDBD"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+
+        <!-- Section header style -->
+        <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#1565C0"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+
+        <!-- Label style -->
+        <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Foreground" Value="#424242"/>
+            <Setter Property="Margin" Value="0,0,0,5"/>
+        </Style>
+
+        <!-- Help text style -->
+        <Style x:Key="HelpTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="#757575"/>
+            <Setter Property="Margin" Value="0,3,0,0"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        
+        <!-- Chat input style -->
+        <Style x:Key="ChatInputStyle" TargetType="TextBox">
+            <Setter Property="Background" Value="#252536"/>
+            <Setter Property="Foreground" Value="#CDD6F4"/>
+            <Setter Property="CaretBrush" Value="#89B4FA"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#45475A"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontFamily" Value="Segoe UI Variable, Segoe UI"/>
+        </Style>
+    </UserControl.Resources>
+    
+    <Grid Background="#ECEFF1">
+        <Grid.RowDefinitions>
+            <!-- Top Menu Bar -->
+            <RowDefinition Height="Auto"/>
+            <!-- Main Content -->
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Top Menu Bar -->
+        <Border Grid.Row="0" Background="#1565C0" Padding="12,8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <!-- Left side: Connection info -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Ellipse Width="10" Height="10" 
+                             Fill="{Binding IsConnected, Converter={StaticResource BoolToColorConverter}, FallbackValue=#F44336}"
+                             VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding ConnectionStatusText, FallbackValue='No database connected'}" 
+                               Foreground="White" FontSize="13" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                    <TextBlock Text=" • " Foreground="#B3E5FC" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding SelectedTable.DisplayName, FallbackValue='All Tables'}" 
+                               Foreground="#B3E5FC" FontSize="13" VerticalAlignment="Center"/>
+                    
+                    <!-- MCP Status -->
+                    <TextBlock Text=" • " Foreground="#B3E5FC" VerticalAlignment="Center" 
+                               Visibility="{Binding IsMcpEnabled, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    <StackPanel Orientation="Horizontal" 
+                                Visibility="{Binding IsMcpEnabled, Converter={StaticResource BoolToVisibilityConverter}}"
+                                VerticalAlignment="Center">
+                        <Ellipse Width="8" Height="8" Fill="#4CAF50" VerticalAlignment="Center"/>
+                        <TextBlock Foreground="#B3E5FC" FontSize="12" Margin="4,0,0,0" VerticalAlignment="Center">
+                            <Run Text="{Binding AvailableMcpTools, Mode=OneWay}"/>
+                            <Run Text=" MCP tools"/>
+                        </TextBlock>
+                    </StackPanel>
+                </StackPanel>
+                
+                <!-- Right side: Settings buttons -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <!-- Prompt Template Selector -->
+                    <ComboBox ItemsSource="{Binding AvailableTemplates}"
+                              SelectedItem="{Binding SelectedTemplate}"
+                              DisplayMemberPath="Name"
+                              Width="160"
+                              Margin="0,0,10,0"
+                              ToolTip="Select a prompt template"/>
+                    
+                    <!-- MCP Servers Button -->
+                    <Button Command="{Binding RefreshMcpServersCommand}"
+                            Padding="10,8"
+                            Margin="0,0,10,0"
+                            Cursor="Hand"
+                            ToolTip="Refresh MCP servers">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="Border" Background="#1976D2" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🔧" FontSize="14" Foreground="White" VerticalAlignment="Center"/>
+                                        <TextBlock Foreground="White" FontWeight="SemiBold" Margin="4,0,0,0">
+                                            <Run Text="{Binding ConnectedMcpServers, Mode=OneWay}"/>
+                                            <Run Text=" MCP"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Border" Property="Background" Value="#1E88E5"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                    
+                    <Button Command="{Binding OpenSettingsCommand}"
+                            Padding="14,8"
+                            Cursor="Hand"
+                            ToolTip="Configure AI settings, API keys, and models">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="Border" Background="#1976D2" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="⚙" FontSize="14" Foreground="White" VerticalAlignment="Center"/>
+                                        <TextBlock Text=" AI Settings" Foreground="White" FontWeight="SemiBold" Margin="4,0,0,0"/>
+                                    </StackPanel>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Border" Property="Background" Value="#1E88E5"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+        
+        <!-- Main Content Area -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <!-- Chat Panel (Left) -->
+                <ColumnDefinition Width="420" MinWidth="350"/>
+                <!-- Splitter -->
+                <ColumnDefinition Width="Auto"/>
+                <!-- Results Panel (Center) -->
+                <ColumnDefinition Width="*" MinWidth="400"/>
+                <!-- Splitter -->
+                <ColumnDefinition Width="Auto"/>
+                <!-- SQL/Database Panel (Right) -->
+                <ColumnDefinition Width="360" MinWidth="280"/>
+            </Grid.ColumnDefinitions>
+
+        <!-- Left Panel - AI Chat -->
+        <Border Grid.Column="0" Background="#1E1E2E" Margin="12,12,6,12" CornerRadius="12"
+                BorderBrush="#45475A" BorderThickness="1">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.15"/>
+            </Border.Effect>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Chat Header -->
+                <Border Grid.Row="0" Background="#313244" CornerRadius="12,12,0,0" Padding="16,12">
+                    <Grid>
+                        <StackPanel>
+                            <TextBlock Text="AI Query Assistant" Foreground="#CDD6F4" FontWeight="Bold" FontSize="16"/>
+                            <TextBlock Text="Ask questions in natural language" 
+                                       Foreground="#A6ADC8" FontSize="11" Margin="0,2,0,0"/>
+                        </StackPanel>
+                        <Button Content="Clear" 
+                                Command="{Binding ClearChatCommand}"
+                                Padding="10,5"
+                                Cursor="Hand"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="Border" Background="#45475A" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                        <TextBlock Text="{TemplateBinding Content}" Foreground="#CDD6F4" FontSize="11"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Border" Property="Background" Value="#585B70"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Messages list -->
+                <ScrollViewer Grid.Row="1" 
+                              x:Name="MessagesScrollViewer"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              Background="#1E1E2E">
+                    <ItemsControl ItemsSource="{Binding Messages}"
+                                  Margin="0,8">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type chatVm:MessageViewModel}">
+                                <chatViews:MessageBubble DataContext="{Binding}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+                
+                <!-- Welcome message when no messages -->
+                <StackPanel Grid.Row="1" 
+                            HorizontalAlignment="Center" 
+                            VerticalAlignment="Center"
+                            Visibility="{Binding HasMessages, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}">
+                    <TextBlock Text="🤖" FontSize="36" HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                    <TextBlock Text="Ask me about your data!" 
+                               Foreground="#CDD6F4" FontSize="15" FontWeight="SemiBold" 
+                               HorizontalAlignment="Center"/>
+                    <TextBlock Foreground="#6C7086" FontSize="12" 
+                               HorizontalAlignment="Center" Margin="0,6,0,0" TextWrapping="Wrap" MaxWidth="350" TextAlignment="Center">
+                        <Run Text="Examples:"/>
+                        <LineBreak/>
+                        <Run Text="• 'Show all customers from NY'" FontStyle="Italic"/>
+                        <LineBreak/>
+                        <Run Text="• 'Top 10 orders last month'" FontStyle="Italic"/>
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- Input area -->
+                <Border Grid.Row="2" 
+                        Background="#181825" 
+                        Padding="12"
+                        BorderThickness="0,1,0,0"
+                        BorderBrush="#45475A"
+                        CornerRadius="0,0,12,12">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <!-- Input text box -->
+                        <Border Grid.Column="0" 
+                                Background="#252536" 
+                                CornerRadius="6"
+                                BorderBrush="#45475A"
+                                BorderThickness="1">
+                            <TextBox x:Name="InputTextBox"
+                                     Text="{Binding InputText, UpdateSourceTrigger=PropertyChanged}"
+                                     Background="Transparent"
+                                     Foreground="#CDD6F4"
+                                     CaretBrush="#89B4FA"
+                                     BorderThickness="0"
+                                     Padding="10,8"
+                                     FontSize="13"
+                                     TextWrapping="Wrap"
+                                     AcceptsReturn="False"
+                                     MaxHeight="80"
+                                     VerticalScrollBarVisibility="Auto"
+                                     IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBoolConverter}}"
+                                     KeyDown="InputTextBox_KeyDown">
+                                <TextBox.Style>
+                                    <Style TargetType="TextBox">
+                                        <Style.Triggers>
+                                            <Trigger Property="Text" Value="">
+                                                <Setter Property="Background">
+                                                    <Setter.Value>
+                                                        <VisualBrush AlignmentX="Left" Stretch="None">
+                                                            <VisualBrush.Visual>
+                                                                <Label Content="Ask a question..." 
+                                                                       Foreground="#6C7086" FontSize="13" 
+                                                                       Padding="10,8,0,0"/>
+                                                            </VisualBrush.Visual>
+                                                        </VisualBrush>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBox.Style>
+                            </TextBox>
+                        </Border>
+                        
+                        <!-- Send button -->
+                        <Button Grid.Column="1"
+                                Command="{Binding SendMessageCommand}"
+                                Margin="6,0,0,0"
+                                Padding="12,8"
+                                Cursor="Hand"
+                                IsEnabled="{Binding CanSendMessage}">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="Border" 
+                                            Background="#89B4FA" 
+                                            CornerRadius="6" 
+                                            Padding="{TemplateBinding Padding}">
+                                        <TextBlock Text="Send" Foreground="#1E1E2E" FontWeight="SemiBold" FontSize="12"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Border" Property="Background" Value="#B4BEFE"/>
+                                        </Trigger>
+                                        <Trigger Property="IsEnabled" Value="False">
+                                            <Setter TargetName="Border" Property="Opacity" Value="0.5"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                        
+                        <!-- Cancel button -->
+                        <Button Grid.Column="2"
+                                Command="{Binding CancelCommand}"
+                                Margin="6,0,0,0"
+                                Padding="12,8"
+                                Cursor="Hand"
+                                Visibility="{Binding IsProcessing, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="Border" 
+                                            Background="#F38BA8" 
+                                            CornerRadius="6" 
+                                            Padding="{TemplateBinding Padding}">
+                                        <TextBlock Text="Cancel" Foreground="#1E1E2E" FontWeight="SemiBold" FontSize="12"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Border" Property="Opacity" Value="0.85"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </Grid>
+                </Border>
+                
+                <!-- Error message overlay -->
+                <Border Grid.Row="1" 
+                        Background="#80000000"
+                        Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibilityConverter}}"
+                        VerticalAlignment="Top"
+                        Margin="12">
+                    <Border Background="#F38BA8" 
+                            CornerRadius="6" 
+                            Padding="12">
+                        <TextBlock Text="{Binding ErrorMessage}"
+                                   Foreground="#1E1E2E"
+                                   TextWrapping="Wrap"
+                                   FontWeight="Medium"
+                                   FontSize="12"/>
+                    </Border>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- Splitter 1 -->
+        <GridSplitter Grid.Column="1" Width="6" Background="#CFD8DC" 
+                      VerticalAlignment="Stretch" HorizontalAlignment="Center"/>
+
+        <!-- Center Panel - Query Results -->
+        <Border Grid.Column="2" Background="White" Margin="6,12" CornerRadius="12"
+                BorderBrush="#CFD8DC" BorderThickness="1">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.1"/>
+            </Border.Effect>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Header -->
+                <Border Grid.Row="0" Background="#2E7D32" CornerRadius="12,12,0,0" Padding="16,12">
+                    <Grid>
+                        <TextBlock Text="Query Results" Foreground="White" FontWeight="Bold" FontSize="16" VerticalAlignment="Center"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Content="▶ Execute"
+                                    Command="{Binding ExecuteQueryCommand}"
+                                    IsEnabled="{Binding CanExecuteQuery}"
+                                    Padding="14,6"
+                                    Cursor="Hand">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="Border" Background="#43A047" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                            <TextBlock Text="{TemplateBinding Content}" Foreground="White" FontWeight="SemiBold" FontSize="12"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Border" Property="Background" Value="#66BB6A"/>
+                                            </Trigger>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter TargetName="Border" Property="Opacity" Value="0.5"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Results Grid -->
+                <DataGrid Grid.Row="1" 
+                          ItemsSource="{Binding QueryResults}"
+                          AutoGenerateColumns="True"
+                          IsReadOnly="True"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          EnableRowVirtualization="True"
+                          EnableColumnVirtualization="True"
+                          GridLinesVisibility="Horizontal"
+                          HeadersVisibility="Column"
+                          AlternatingRowBackground="#F5F5F5"
+                          BorderThickness="0"
+                          FontSize="12">
+                    <DataGrid.ColumnHeaderStyle>
+                        <Style TargetType="DataGridColumnHeader">
+                            <Setter Property="Background" Value="#ECEFF1"/>
+                            <Setter Property="Padding" Value="10,8"/>
+                            <Setter Property="FontWeight" Value="SemiBold"/>
+                            <Setter Property="FontSize" Value="12"/>
+                            <Setter Property="BorderBrush" Value="#CFD8DC"/>
+                            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                        </Style>
+                    </DataGrid.ColumnHeaderStyle>
+                    <DataGrid.CellStyle>
+                        <Style TargetType="DataGridCell">
+                            <Setter Property="Padding" Value="10,6"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="Background" Value="#BBDEFB"/>
+                                    <Setter Property="Foreground" Value="Black"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.CellStyle>
+                    <DataGrid.RowStyle>
+                        <Style TargetType="DataGridRow">
+                            <Setter Property="Height" Value="32"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#E3F2FD"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.RowStyle>
+                </DataGrid>
+
+                <!-- Status Bar -->
+                <Border Grid.Row="2" Background="#ECEFF1" Padding="10,8" 
+                        CornerRadius="0,0,12,12" BorderBrush="#CFD8DC" BorderThickness="0,1,0,0">
+                    <Grid>
+                        <TextBlock Text="{Binding ResultStatusText, FallbackValue='Ready - ask a question to generate SQL'}" 
+                                   Foreground="#616161"
+                                   FontSize="11"/>
+                        
+                        <!-- Loading indicator -->
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                                    Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <ProgressBar IsIndeterminate="True" Width="80" Height="3" Margin="0,0,8,0"/>
+                            <TextBlock Text="Loading..." Foreground="#424242" FontSize="11"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- Splitter 2 -->
+        <GridSplitter Grid.Column="3" Width="6" Background="#CFD8DC" 
+                      VerticalAlignment="Stretch" HorizontalAlignment="Center"/>
+
+        <!-- Right Panel - SQL & Database Configuration -->
+        <Border Grid.Column="4" Background="White" Margin="6,12,12,12" CornerRadius="12"
+                BorderBrush="#CFD8DC" BorderThickness="1">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.1"/>
+            </Border.Effect>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Header -->
+                <Border Grid.Row="0" Background="#37474F" CornerRadius="12,12,0,0" Padding="14,10">
+                    <Grid>
+                        <TextBlock Text="SQL &amp; Settings" Foreground="White" FontWeight="Bold" FontSize="15" VerticalAlignment="Center"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Content="💾 Save"
+                                    Command="{Binding SaveQueryCommand}"
+                                    IsEnabled="{Binding CanSaveQuery}"
+                                    Padding="10,4"
+                                    Margin="0,0,6,0"
+                                    Cursor="Hand"
+                                    ToolTip="Save this SQL query for later use">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="Border" Background="#2E7D32" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                            <TextBlock Text="{TemplateBinding Content}" Foreground="White" FontSize="11"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Border" Property="Background" Value="#43A047"/>
+                                            </Trigger>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter TargetName="Border" Property="Opacity" Value="0.5"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                            <Button Content="Copy"
+                                    Command="{Binding CopySqlCommand}"
+                                    Padding="10,4"
+                                    Cursor="Hand">
+                                <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="Border" Background="#546E7A" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                        <TextBlock Text="{TemplateBinding Content}" Foreground="White" FontSize="11"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Border" Property="Background" Value="#607D8B"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <!-- Query Name Input -->
+                        <Border Background="#455A64" Padding="10" BorderBrush="#37474F" BorderThickness="0,0,0,1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Text="{Binding QueryName, UpdateSourceTrigger=PropertyChanged}"
+                                         Background="#37474F"
+                                         Foreground="White"
+                                         CaretBrush="White"
+                                         BorderThickness="1"
+                                         BorderBrush="#546E7A"
+                                         Padding="8,6"
+                                         FontSize="12"
+                                         ToolTip="Enter a name for this query before saving">
+                                    <TextBox.Style>
+                                        <Style TargetType="TextBox">
+                                            <Style.Triggers>
+                                                <Trigger Property="Text" Value="">
+                                                    <Setter Property="Background">
+                                                        <Setter.Value>
+                                                            <VisualBrush AlignmentX="Left" Stretch="None">
+                                                                <VisualBrush.Visual>
+                                                                    <Label Content="Query name..." 
+                                                                           Foreground="#90A4AE" FontSize="12" 
+                                                                           Padding="8,6,0,0"/>
+                                                                </VisualBrush.Visual>
+                                                            </VisualBrush>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBox.Style>
+                                </TextBox>
+                            </Grid>
+                        </Border>
+                        
+                        <!-- Generated SQL -->
+                        <TextBox Text="{Binding GeneratedSql, UpdateSourceTrigger=PropertyChanged}"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"
+                                 FontFamily="Consolas, Courier New, monospace"
+                                 FontSize="12"
+                                 Padding="12"
+                                 MinHeight="120"
+                                 MaxHeight="200"
+                                 BorderThickness="0"
+                                 Background="#263238"
+                                 Foreground="#80DEEA"
+                                 CaretBrush="#80DEEA"/>
+                        
+                        <!-- Saved Queries Section -->
+                        <Border Background="#E8F5E9" Padding="14" BorderBrush="#C8E6C9" BorderThickness="0,1,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Saved Queries" 
+                                           FontWeight="SemiBold" FontSize="13" Foreground="#2E7D32" Margin="0,0,0,8"/>
+                                <ComboBox ItemsSource="{Binding SavedQueries}"
+                                          SelectedItem="{Binding SelectedSavedQuery}"
+                                          DisplayMemberPath="Name"
+                                          Style="{StaticResource LargeComboBoxStyle}"
+                                          Height="36"
+                                          ToolTip="Select a saved query to load"/>
+                                <Button Content="🗑 Delete Selected"
+                                        Command="{Binding DeleteSavedQueryCommand}"
+                                        CommandParameter="{Binding SelectedSavedQuery}"
+                                        Margin="0,8,0,0"
+                                        Padding="8,4"
+                                        Cursor="Hand"
+                                        HorizontalAlignment="Right"
+                                        Visibility="{Binding SelectedSavedQuery, Converter={StaticResource NullToVisibilityConverter}}">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="Border" Background="#C62828" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                                <TextBlock Text="{TemplateBinding Content}" Foreground="White" FontSize="10"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Border" Property="Background" Value="#E53935"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Database Selection Section -->
+                        <Border Background="#F5F5F5" Padding="14" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Database Connection" 
+                                           FontWeight="SemiBold" FontSize="13" Foreground="#424242" Margin="0,0,0,8"/>
+                                <ComboBox ItemsSource="{Binding AvailableConnections}"
+                                          SelectedItem="{Binding SelectedConnection}"
+                                          DisplayMemberPath="Name"
+                                          Style="{StaticResource LargeComboBoxStyle}"
+                                          Height="36"
+                                          ToolTip="Select the database you want to query"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Table Selection Section -->
+                        <Border Background="White" Padding="14" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Focus Table (Optional)" 
+                                           FontWeight="SemiBold" FontSize="13" Foreground="#424242" Margin="0,0,0,8"/>
+                                <ComboBox ItemsSource="{Binding AvailableTables}"
+                                          SelectedItem="{Binding SelectedTable}"
+                                          DisplayMemberPath="DisplayName"
+                                          Style="{StaticResource LargeComboBoxStyle}"
+                                          Height="36"
+                                          IsEnabled="{Binding IsConnected}"
+                                          ToolTip="Optionally focus on a specific table"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Model Selection Section -->
+                        <Border Background="#F5F5F5" Padding="14" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0">
+                            <StackPanel>
+                                <TextBlock Text="AI Model" 
+                                           FontWeight="SemiBold" FontSize="13" Foreground="#424242" Margin="0,0,0,8"/>
+                                <ComboBox ItemsSource="{Binding AvailableModels}"
+                                          SelectedItem="{Binding SelectedModel}"
+                                          DisplayMemberPath="DisplayName"
+                                          Style="{StaticResource LargeComboBoxStyle}"
+                                          Height="36"
+                                          ToolTip="Select the AI model to use"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                    <Ellipse Width="8" Height="8" 
+                                             Fill="{Binding IsApiKeyConfigured, Converter={StaticResource BoolToColorConverter}}"/>
+                                    <TextBlock Text="{Binding ApiKeyStatusText}" 
+                                               FontSize="11" Margin="6,0,0,0" 
+                                               Foreground="#757575"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Schema Preview -->
+                        <Border Background="White" Padding="14" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,8">
+                                    <TextBlock Text="Schema Preview" 
+                                               FontWeight="SemiBold" FontSize="13" Foreground="#424242" VerticalAlignment="Center"/>
+                                    <Button Content="Refresh" 
+                                            Command="{Binding RefreshSchemaCommand}"
+                                            Padding="8,3"
+                                            Cursor="Hand"
+                                            HorizontalAlignment="Right">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Border" Background="#1565C0" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                    <TextBlock Text="{TemplateBinding Content}" Foreground="White" FontSize="10"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Border" Property="Background" Value="#1976D2"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </Grid>
+                                <Border Background="#FAFAFA" CornerRadius="4" Padding="10" MaxHeight="150" BorderBrush="#E0E0E0" BorderThickness="1">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <TextBlock Text="{Binding SchemaPreview, FallbackValue='Select a database to see schema...'}"
+                                                   FontFamily="Consolas, Courier New"
+                                                   FontSize="10"
+                                                   Foreground="#616161"
+                                                   TextWrapping="Wrap"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+        </Grid>
+        
+        <!-- Tool Approval Overlay -->
+        <Border Grid.Row="1" 
+                Background="#80000000"
+                Visibility="{Binding IsToolApprovalVisible, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}"
+                Panel.ZIndex="100">
+            <Border Background="White" 
+                    CornerRadius="12" 
+                    Padding="24"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    MinWidth="400"
+                    MaxWidth="600">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="20" ShadowDepth="5" Opacity="0.3"/>
+                </Border.Effect>
+                <StackPanel>
+                    <TextBlock Text="🔧 Tool Approval Required" 
+                               FontSize="18" FontWeight="Bold" 
+                               Foreground="#1565C0" Margin="0,0,0,16"/>
+                    
+                    <TextBlock Text="The AI wants to execute the following tool:"
+                               Foreground="#616161" Margin="0,0,0,12"/>
+                    
+                    <Border Background="#F5F5F5" CornerRadius="6" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="{Binding PendingToolApproval.ToolName, FallbackValue='Unknown Tool'}"
+                                       FontWeight="SemiBold" FontSize="14" Foreground="#424242"/>
+                            <TextBlock Text="Arguments:" Foreground="#757575" Margin="0,8,0,4" FontSize="11"/>
+                            <Border Background="White" CornerRadius="4" Padding="8" MaxHeight="150">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <TextBlock Text="{Binding PendingToolApproval.FormattedArguments}"
+                                               FontFamily="Consolas"
+                                               FontSize="11"
+                                               Foreground="#424242"
+                                               TextWrapping="Wrap"/>
+                                </ScrollViewer>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                    
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Deny"
+                                Command="{Binding DenyToolCallCommand}"
+                                Padding="16,8"
+                                Margin="0,0,10,0"
+                                Cursor="Hand">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="Border" Background="#C62828" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                        <TextBlock Text="{TemplateBinding Content}" Foreground="White" FontWeight="SemiBold"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Border" Property="Background" Value="#E53935"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                        <Button Content="✓ Approve"
+                                Command="{Binding ApproveToolCallCommand}"
+                                Padding="16,8"
+                                Cursor="Hand">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="Border" Background="#2E7D32" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                        <TextBlock Text="{TemplateBinding Content}" Foreground="White" FontWeight="SemiBold"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Border" Property="Background" Value="#43A047"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+    </Grid>
+</UserControl>

@@ -68,7 +68,7 @@
                 
                 <!-- Navigation Tabs -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Left" Margin="20,0,0,0">
-                    <RadioButton x:Name="QueryBuilderTab" Content="Query Builder" 
+                    <RadioButton x:Name="AiQueryTab" Content="🤖 AI Query" 
                                  IsChecked="True" GroupName="NavTabs"
                                  Style="{StaticResource NavTabStyle}"/>
                     <RadioButton x:Name="DatabaseExplorerTab" Content="Database Explorer" 
@@ -80,8 +80,8 @@
 
         <!-- Main Content Area with View Switching -->
         <Grid Grid.Row="2">
-            <!-- Query Builder View -->
-            <views:DataExplorerView Visibility="{Binding IsChecked, ElementName=QueryBuilderTab, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+            <!-- AI Query View (replaces Query Builder) -->
+            <views:AiQueryView Visibility="{Binding IsChecked, ElementName=AiQueryTab, Converter={StaticResource BooleanToVisibilityConverter}}"/>
             
             <!-- Database Explorer View -->
             <views:DatabaseExplorerView Visibility="{Binding IsChecked, ElementName=DatabaseExplorerTab, Converter={StaticResource BooleanToVisibilityConverter}}"/>
