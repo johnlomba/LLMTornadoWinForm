@@ -7,7 +7,9 @@ using LlmTornado.Chat;
 using LlmTornado.Chat.Models;
 using LlmTornado.Code;
 using LlmTornado.WpfViews.Models;
-
+using Newtonsoft.Json.Converters;
+using System.ComponentModel;
+using System.Text.Json.Serialization;
 namespace LlmTornado.WpfViews.Services;
 
 /// <summary>
@@ -21,6 +23,11 @@ public class ChatService
     private TornadoApi? _api;
     private bool _isProcessing;
     private DateTime _requestStartTime;
+    
+    /// <summary>
+    /// Whether tool calls require user approval before execution.
+    /// </summary>
+    public bool RequireToolApproval { get; set; } = true;
     
     /// <summary>
     /// Raised when a streaming text delta is received.
@@ -53,7 +60,7 @@ public class ChatService
     public event Action<int, int, int>? OnUsageReceived;
     
     /// <summary>
-    /// Raised when tool is invoked.
+    /// Raised when tool is invoked (after execution).
     /// </summary>
     public event Action<string>? OnToolInvoked;
     
@@ -61,6 +68,11 @@ public class ChatService
     /// Raised when tool completes.
     /// </summary>
     public event Action<string, string>? OnToolCompleted;
+    
+    /// <summary>
+    /// Raised when a tool call requires approval. Returns the ToolCallRequest for the UI to handle.
+    /// </summary>
+    public event Action<ToolCallRequest>? OnToolApprovalRequired;
     
     /// <summary>
     /// Whether the service is currently processing a request.
@@ -122,7 +134,12 @@ public class ChatService
             model,
             instructions: systemPrompt ?? "You are a helpful assistant",
             streaming: settings.EnableStreaming,
-            options: chatOptions
+            options: chatOptions,
+            tools: [GetCurrentWeather],
+             toolPermissionRequired:new Dictionary<string, bool>()
+                {
+                    { "GetCurrentWeather", true }
+                }
         );
         
         // Create runtime configuration
@@ -134,7 +151,22 @@ public class ChatService
         // Create the runtime
         _runtime = new ChatRuntime(config);
     }
-    
+
+    [JsonConverter(typeof(StringEnumConverter))]
+    public enum Unit
+    {
+        Celsius, 
+        Fahrenheit
+    }
+
+    [Description("Get the current weather in a given location")]
+    public static string GetCurrentWeather(
+        [Description("The city and state, e.g. Boston, MA")] string location,
+        [Description("unit of temperature measurement in C or F")] Unit unit = Unit.Celsius)
+    {
+        // Call the weather API here.
+        return $"31 C";
+    }
     /// <summary>
     /// Sends a message and returns the response.
     /// </summary>
@@ -264,7 +296,7 @@ public class ChatService
                 break;
                 
             case AgentRunnerToolInvokedEvent toolInvoked:
-                OnToolInvoked?.Invoke(toolInvoked.ToolCalled.Name ?? "Unknown");
+                HandleToolInvoked(toolInvoked);
                 break;
                 
             case AgentRunnerToolCompletedEvent toolCompleted:
@@ -284,6 +316,30 @@ public class ChatService
                 OnProcessingError?.Invoke(errorEvent.Exception ?? new Exception(errorEvent.ErrorMessage));
                 break;
         }
+    }
+    
+    /// <summary>
+    /// Handles tool invocation events - extracts tool name and arguments.
+    /// </summary>
+    private void HandleToolInvoked(AgentRunnerToolInvokedEvent toolEvent)
+    {
+        var toolName = toolEvent.ToolCalled.Name ?? "Unknown";
+        var arguments = toolEvent.ToolCalled.Arguments ?? "{}";
+        
+        // Create a tool call request with the details
+        var request = new ToolCallRequest
+        {
+            ToolName = toolName,
+            Arguments = arguments,
+            Status = ToolApprovalStatus.Approved, // Already invoked at this point
+            RequestedAt = DateTime.UtcNow
+        };
+        
+        // Raise the approval event (for display purposes)
+        OnToolApprovalRequired?.Invoke(request);
+        
+        // Also raise the simple invoked event
+        OnToolInvoked?.Invoke(toolName);
     }
     
     /// <summary>
