@@ -9,7 +9,8 @@
              xmlns:converters="clr-namespace:SmarterViews.Desktop.Converters"
              mc:Ignorable="d" 
              d:DesignHeight="700" d:DesignWidth="1400"
-             d:DataContext="{d:DesignInstance vm:AiQueryViewModel, IsDesignTimeCreatable=True}">
+             d:DataContext="{d:DesignInstance vm:AiQueryViewModel, IsDesignTimeCreatable=True}"
+             Loaded="UserControl_Loaded">
 
     <UserControl.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
@@ -157,20 +158,45 @@
                     </StackPanel>
                 </StackPanel>
                 
-                <!-- Right side: Settings buttons -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal">
-                    <!-- Prompt Template Selector -->
-                    <ComboBox ItemsSource="{Binding AvailableTemplates}"
-                              SelectedItem="{Binding SelectedTemplate}"
+                <!-- Right side: Settings controls -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Database Connection -->
+                    <TextBlock Text="Database:" Foreground="#B3E5FC" FontSize="12" 
+                               VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <ComboBox ItemsSource="{Binding AvailableConnections}"
+                              SelectedItem="{Binding SelectedConnection}"
                               DisplayMemberPath="Name"
+                              Width="150"
+                              Height="28"
+                              Margin="0,0,12,0"
+                              ToolTip="Select the database you want to query"/>
+                    
+                    <!-- AI Model -->
+                    <TextBlock Text="AI Model:" Foreground="#B3E5FC" FontSize="12" 
+                               VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <ComboBox ItemsSource="{Binding AvailableModels}"
+                              SelectedItem="{Binding SelectedModel}"
+                              DisplayMemberPath="DisplayName"
                               Width="160"
-                              Margin="0,0,10,0"
-                              ToolTip="Select a prompt template"/>
+                              Height="28"
+                              Margin="0,0,12,0"
+                              ToolTip="Select the AI model to use"/>
+                    
+                    <!-- Saved Queries -->
+                    <TextBlock Text="Saved:" Foreground="#B3E5FC" FontSize="12" 
+                               VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <ComboBox ItemsSource="{Binding SavedQueries}"
+                              SelectedItem="{Binding SelectedSavedQuery}"
+                              DisplayMemberPath="Name"
+                              Width="140"
+                              Height="28"
+                              Margin="0,0,12,0"
+                              ToolTip="Select a saved query to load"/>
                     
                     <!-- MCP Servers Button -->
-                    <Button Command="{Binding RefreshMcpServersCommand}"
-                            Padding="10,8"
-                            Margin="0,0,10,0"
+                    <Button Click="McpButton_Click"
+                            Padding="10,6"
+                            Margin="0,0,8,0"
                             Cursor="Hand"
                             ToolTip="Refresh MCP servers">
                         <Button.Template>
@@ -178,7 +204,7 @@
                                 <Border x:Name="Border" Background="#1976D2" CornerRadius="6" Padding="{TemplateBinding Padding}">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="🔧" FontSize="14" Foreground="White" VerticalAlignment="Center"/>
-                                        <TextBlock Foreground="White" FontWeight="SemiBold" Margin="4,0,0,0">
+                                        <TextBlock Foreground="White" FontWeight="SemiBold" FontSize="12" Margin="4,0,0,0" VerticalAlignment="Center">
                                             <Run Text="{Binding ConnectedMcpServers, Mode=OneWay}"/>
                                             <Run Text=" MCP"/>
                                         </TextBlock>
@@ -193,8 +219,9 @@
                         </Button.Template>
                     </Button>
                     
-                    <Button Command="{Binding OpenSettingsCommand}"
-                            Padding="14,8"
+                    <!-- AI Settings Button -->
+                    <Button Click="AiSettingsButton_Click"
+                            Padding="10,6"
                             Cursor="Hand"
                             ToolTip="Configure AI settings, API keys, and models">
                         <Button.Template>
@@ -202,7 +229,7 @@
                                 <Border x:Name="Border" Background="#1976D2" CornerRadius="6" Padding="{TemplateBinding Padding}">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="⚙" FontSize="14" Foreground="White" VerticalAlignment="Center"/>
-                                        <TextBlock Text=" AI Settings" Foreground="White" FontWeight="SemiBold" Margin="4,0,0,0"/>
+                                        <TextBlock Text=" AI Settings" Foreground="White" FontWeight="SemiBold" FontSize="12" Margin="4,0,0,0" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Border>
                                 <ControlTemplate.Triggers>
@@ -461,8 +488,7 @@
                         <TextBlock Text="Query Results" Foreground="White" FontWeight="Bold" FontSize="16" VerticalAlignment="Center"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                             <Button Content="▶ Execute"
-                                    Command="{Binding ExecuteQueryCommand}"
-                                    IsEnabled="{Binding CanExecuteQuery}"
+                                    Click="ExecuteButton_Click"
                                     Padding="14,6"
                                     Cursor="Hand">
                                 <Button.Template>
@@ -556,7 +582,7 @@
         <GridSplitter Grid.Column="3" Width="6" Background="#CFD8DC" 
                       VerticalAlignment="Stretch" HorizontalAlignment="Center"/>
 
-        <!-- Right Panel - SQL & Database Configuration -->
+        <!-- Right Panel - Generated SQL -->
         <Border Grid.Column="4" Background="White" Margin="6,12,12,12" CornerRadius="12"
                 BorderBrush="#CFD8DC" BorderThickness="1">
             <Border.Effect>
@@ -565,17 +591,17 @@
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
                 <!-- Header -->
                 <Border Grid.Row="0" Background="#37474F" CornerRadius="12,12,0,0" Padding="14,10">
                     <Grid>
-                        <TextBlock Text="SQL &amp; Settings" Foreground="White" FontWeight="Bold" FontSize="15" VerticalAlignment="Center"/>
+                        <TextBlock Text="Generated SQL" Foreground="White" FontWeight="Bold" FontSize="15" VerticalAlignment="Center"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                             <Button Content="💾 Save"
-                                    Command="{Binding SaveQueryCommand}"
-                                    IsEnabled="{Binding CanSaveQuery}"
+                                    Click="SaveButton_Click"
                                     Padding="10,4"
                                     Margin="0,0,6,0"
                                     Cursor="Hand"
@@ -597,7 +623,7 @@
                                 </Button.Template>
                             </Button>
                             <Button Content="Copy"
-                                    Command="{Binding CopySqlCommand}"
+                                    Click="CopyButton_Click"
                                     Padding="10,4"
                                     Cursor="Hand">
                                 <Button.Template>
@@ -617,185 +643,53 @@
                     </Grid>
                 </Border>
 
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                    <StackPanel>
-                        <!-- Query Name Input -->
-                        <Border Background="#455A64" Padding="10" BorderBrush="#37474F" BorderThickness="0,0,0,1">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBox Text="{Binding QueryName, UpdateSourceTrigger=PropertyChanged}"
-                                         Background="#37474F"
-                                         Foreground="White"
-                                         CaretBrush="White"
-                                         BorderThickness="1"
-                                         BorderBrush="#546E7A"
-                                         Padding="8,6"
-                                         FontSize="12"
-                                         ToolTip="Enter a name for this query before saving">
-                                    <TextBox.Style>
-                                        <Style TargetType="TextBox">
-                                            <Style.Triggers>
-                                                <Trigger Property="Text" Value="">
-                                                    <Setter Property="Background">
-                                                        <Setter.Value>
-                                                            <VisualBrush AlignmentX="Left" Stretch="None">
-                                                                <VisualBrush.Visual>
-                                                                    <Label Content="Query name..." 
-                                                                           Foreground="#90A4AE" FontSize="12" 
-                                                                           Padding="8,6,0,0"/>
-                                                                </VisualBrush.Visual>
-                                                            </VisualBrush>
-                                                        </Setter.Value>
-                                                    </Setter>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBox.Style>
-                                </TextBox>
-                            </Grid>
-                        </Border>
-                        
-                        <!-- Generated SQL -->
-                        <TextBox Text="{Binding GeneratedSql, UpdateSourceTrigger=PropertyChanged}"
-                                 AcceptsReturn="True"
-                                 TextWrapping="Wrap"
-                                 VerticalScrollBarVisibility="Auto"
-                                 FontFamily="Consolas, Courier New, monospace"
-                                 FontSize="12"
-                                 Padding="12"
-                                 MinHeight="120"
-                                 MaxHeight="200"
-                                 BorderThickness="0"
-                                 Background="#263238"
-                                 Foreground="#80DEEA"
-                                 CaretBrush="#80DEEA"/>
-                        
-                        <!-- Saved Queries Section -->
-                        <Border Background="#E8F5E9" Padding="14" BorderBrush="#C8E6C9" BorderThickness="0,1,0,0">
-                            <StackPanel>
-                                <TextBlock Text="Saved Queries" 
-                                           FontWeight="SemiBold" FontSize="13" Foreground="#2E7D32" Margin="0,0,0,8"/>
-                                <ComboBox ItemsSource="{Binding SavedQueries}"
-                                          SelectedItem="{Binding SelectedSavedQuery}"
-                                          DisplayMemberPath="Name"
-                                          Style="{StaticResource LargeComboBoxStyle}"
-                                          Height="36"
-                                          ToolTip="Select a saved query to load"/>
-                                <Button Content="🗑 Delete Selected"
-                                        Command="{Binding DeleteSavedQueryCommand}"
-                                        CommandParameter="{Binding SelectedSavedQuery}"
-                                        Margin="0,8,0,0"
-                                        Padding="8,4"
-                                        Cursor="Hand"
-                                        HorizontalAlignment="Right"
-                                        Visibility="{Binding SelectedSavedQuery, Converter={StaticResource NullToVisibilityConverter}}">
-                                    <Button.Template>
-                                        <ControlTemplate TargetType="Button">
-                                            <Border x:Name="Border" Background="#C62828" CornerRadius="4" Padding="{TemplateBinding Padding}">
-                                                <TextBlock Text="{TemplateBinding Content}" Foreground="White" FontSize="10"/>
-                                            </Border>
-                                            <ControlTemplate.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter TargetName="Border" Property="Background" Value="#E53935"/>
-                                                </Trigger>
-                                            </ControlTemplate.Triggers>
-                                        </ControlTemplate>
-                                    </Button.Template>
-                                </Button>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Database Selection Section -->
-                        <Border Background="#F5F5F5" Padding="14" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0">
-                            <StackPanel>
-                                <TextBlock Text="Database Connection" 
-                                           FontWeight="SemiBold" FontSize="13" Foreground="#424242" Margin="0,0,0,8"/>
-                                <ComboBox ItemsSource="{Binding AvailableConnections}"
-                                          SelectedItem="{Binding SelectedConnection}"
-                                          DisplayMemberPath="Name"
-                                          Style="{StaticResource LargeComboBoxStyle}"
-                                          Height="36"
-                                          ToolTip="Select the database you want to query"/>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Table Selection Section -->
-                        <Border Background="White" Padding="14" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0">
-                            <StackPanel>
-                                <TextBlock Text="Focus Table (Optional)" 
-                                           FontWeight="SemiBold" FontSize="13" Foreground="#424242" Margin="0,0,0,8"/>
-                                <ComboBox ItemsSource="{Binding AvailableTables}"
-                                          SelectedItem="{Binding SelectedTable}"
-                                          DisplayMemberPath="DisplayName"
-                                          Style="{StaticResource LargeComboBoxStyle}"
-                                          Height="36"
-                                          IsEnabled="{Binding IsConnected}"
-                                          ToolTip="Optionally focus on a specific table"/>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Model Selection Section -->
-                        <Border Background="#F5F5F5" Padding="14" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0">
-                            <StackPanel>
-                                <TextBlock Text="AI Model" 
-                                           FontWeight="SemiBold" FontSize="13" Foreground="#424242" Margin="0,0,0,8"/>
-                                <ComboBox ItemsSource="{Binding AvailableModels}"
-                                          SelectedItem="{Binding SelectedModel}"
-                                          DisplayMemberPath="DisplayName"
-                                          Style="{StaticResource LargeComboBoxStyle}"
-                                          Height="36"
-                                          ToolTip="Select the AI model to use"/>
-                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                    <Ellipse Width="8" Height="8" 
-                                             Fill="{Binding IsApiKeyConfigured, Converter={StaticResource BoolToColorConverter}}"/>
-                                    <TextBlock Text="{Binding ApiKeyStatusText}" 
-                                               FontSize="11" Margin="6,0,0,0" 
-                                               Foreground="#757575"/>
-                                </StackPanel>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Schema Preview -->
-                        <Border Background="White" Padding="14" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0">
-                            <StackPanel>
-                                <Grid Margin="0,0,0,8">
-                                    <TextBlock Text="Schema Preview" 
-                                               FontWeight="SemiBold" FontSize="13" Foreground="#424242" VerticalAlignment="Center"/>
-                                    <Button Content="Refresh" 
-                                            Command="{Binding RefreshSchemaCommand}"
-                                            Padding="8,3"
-                                            Cursor="Hand"
-                                            HorizontalAlignment="Right">
-                                        <Button.Template>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border x:Name="Border" Background="#1565C0" CornerRadius="3" Padding="{TemplateBinding Padding}">
-                                                    <TextBlock Text="{TemplateBinding Content}" Foreground="White" FontSize="10"/>
-                                                </Border>
-                                                <ControlTemplate.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="Border" Property="Background" Value="#1976D2"/>
-                                                    </Trigger>
-                                                </ControlTemplate.Triggers>
-                                            </ControlTemplate>
-                                        </Button.Template>
-                                    </Button>
-                                </Grid>
-                                <Border Background="#FAFAFA" CornerRadius="4" Padding="10" MaxHeight="150" BorderBrush="#E0E0E0" BorderThickness="1">
-                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                        <TextBlock Text="{Binding SchemaPreview, FallbackValue='Select a database to see schema...'}"
-                                                   FontFamily="Consolas, Courier New"
-                                                   FontSize="10"
-                                                   Foreground="#616161"
-                                                   TextWrapping="Wrap"/>
-                                    </ScrollViewer>
-                                </Border>
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-                </ScrollViewer>
+                <!-- Query Name Input -->
+                <Border Grid.Row="1" Background="#455A64" Padding="10" BorderBrush="#37474F" BorderThickness="0,0,0,1">
+                    <TextBox Text="{Binding QueryName, UpdateSourceTrigger=PropertyChanged}"
+                             Background="#37474F"
+                             Foreground="White"
+                             CaretBrush="White"
+                             BorderThickness="1"
+                             BorderBrush="#546E7A"
+                             Padding="8,6"
+                             FontSize="12"
+                             ToolTip="Enter a name for this query before saving">
+                        <TextBox.Style>
+                            <Style TargetType="TextBox">
+                                <Style.Triggers>
+                                    <Trigger Property="Text" Value="">
+                                        <Setter Property="Background">
+                                            <Setter.Value>
+                                                <VisualBrush AlignmentX="Left" Stretch="None">
+                                                    <VisualBrush.Visual>
+                                                        <Label Content="Query name..." 
+                                                               Foreground="#90A4AE" FontSize="12" 
+                                                               Padding="8,6,0,0"/>
+                                                    </VisualBrush.Visual>
+                                                </VisualBrush>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBox.Style>
+                    </TextBox>
+                </Border>
+                
+                <!-- Generated SQL Editor -->
+                <TextBox Grid.Row="2" 
+                         Text="{Binding GeneratedSql, UpdateSourceTrigger=PropertyChanged}"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         VerticalScrollBarVisibility="Auto"
+                         HorizontalScrollBarVisibility="Auto"
+                         FontFamily="Consolas, Courier New, monospace"
+                         FontSize="13"
+                         Padding="12"
+                         BorderThickness="0"
+                         Background="#263238"
+                         Foreground="#80DEEA"
+                         CaretBrush="#80DEEA"/>
             </Grid>
         </Border>
         </Grid>

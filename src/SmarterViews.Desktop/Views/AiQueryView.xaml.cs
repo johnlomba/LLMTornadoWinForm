@@ -10,10 +10,23 @@ namespace SmarterViews.Desktop.Views;
 /// </summary>
 public partial class AiQueryView : UserControl
 {
+    private AiQueryViewModel? _viewModel;
+    
     public AiQueryView()
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
+    }
+
+    private void UserControl_Loaded(object sender, RoutedEventArgs e)
+    {
+        // Initialize ViewModel if not already set
+        if (DataContext == null)
+        {
+            _viewModel = new AiQueryViewModel();
+            DataContext = _viewModel;
+            _ = _viewModel.InitializeAsync();
+        }
     }
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -25,6 +38,7 @@ public partial class AiQueryView : UserControl
 
         if (e.NewValue is AiQueryViewModel newVm)
         {
+            _viewModel = newVm;
             newVm.ScrollToBottomRequested += ScrollToBottom;
         }
     }
@@ -41,11 +55,51 @@ public partial class AiQueryView : UserControl
     {
         if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None)
         {
-            if (DataContext is AiQueryViewModel vm && vm.SendMessageCommand.CanExecute(null))
+            if (_viewModel != null && _viewModel.SendMessageCommand.CanExecute(null))
             {
-                vm.SendMessageCommand.Execute(null);
+                _viewModel.SendMessageCommand.Execute(null);
                 e.Handled = true;
             }
+        }
+    }
+
+    private void McpButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel != null && _viewModel.RefreshMcpServersCommand.CanExecute(null))
+        {
+            _viewModel.RefreshMcpServersCommand.Execute(null);
+        }
+    }
+
+    private void AiSettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel != null && _viewModel.OpenSettingsCommand.CanExecute(null))
+        {
+            _viewModel.OpenSettingsCommand.Execute(null);
+        }
+    }
+
+    private void ExecuteButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel != null && _viewModel.ExecuteQueryCommand.CanExecute(null))
+        {
+            _viewModel.ExecuteQueryCommand.Execute(null);
+        }
+    }
+
+    private void SaveButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel != null && _viewModel.SaveQueryCommand.CanExecute(null))
+        {
+            _viewModel.SaveQueryCommand.Execute(null);
+        }
+    }
+
+    private void CopyButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel != null && _viewModel.CopySqlCommand.CanExecute(null))
+        {
+            _viewModel.CopySqlCommand.Execute(null);
         }
     }
 }

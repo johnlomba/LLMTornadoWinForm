@@ -200,7 +200,7 @@ public partial class AiQueryViewModel : ViewModelBase
         _ = InitializeAsync();
     }
 
-    private async Task InitializeAsync()
+    internal async Task InitializeAsync()
     {
         await LoadConnectionsAsync();
         await LoadSettingsAsync();
