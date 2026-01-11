@@ -4,6 +4,8 @@ using LlmTornado.Agents.ChatRuntime.RuntimeConfigurations;
 using LlmTornado.Agents.DataModels;
 using LlmTornado.Chat;
 using LlmTornado.Chat.Models;
+using LlmTornado.Common;
+using LlmTornado.Mcp;
 using LlmTornado.Responses;
 using System;
 using System.Collections.Generic;
@@ -127,6 +129,60 @@ public class AgentRuntimeDemo : DemoBase
         Console.WriteLine("[User]:¿cuanto es 2+2?");
         Console.Write("[Assistant]: ");
         ChatMessage report = await runtime.InvokeAsync(new ChatMessage(Code.ChatMessageRoles.User, "¿cuanto es 2+2?"));
+        Console.WriteLine(report.Role);
+    }
+
+    
+
+    [TornadoTest]
+    [Flaky]
+    public static async Task ChatUIRuntimeConfigurationDemo()
+    {
+         MCPServer fetch_mcp = new MCPServer("fetch", command: "uvx", arguments:
+            [
+                "mcp-server-fetch"
+            ]);
+        MCPServer excel_mcp = new MCPServer("excel", command: "uvx", arguments:
+            [
+                "excel-mcp-server","stdio"
+            ]);
+        await fetch_mcp.InitializeAsync();
+        await excel_mcp.InitializeAsync();
+        List<Tool> tools = new List<Tool>();
+        tools.AddRange(fetch_mcp.AllowedTornadoTools);
+        tools.AddRange(excel_mcp.AllowedTornadoTools);
+
+        ChatUIRuntimeConfiguration runtimeConfiguration = new ChatUIRuntimeConfiguration( 
+            Program.Connect(),
+            ChatModel.OpenAi.Gpt41.V41Mini,
+            tools,
+            name: "Agent",
+            instructions: "You are a useful assistant.",
+            streaming:true);
+
+        ChatRuntime runtime = new ChatRuntime(runtimeConfiguration);
+
+        runtime.RuntimeConfiguration.OnRuntimeEvent += async (evt) =>
+        {
+            if (evt.EventType == ChatRuntimeEventTypes.AgentRunner)
+            {
+                if(evt is ChatRuntimeAgentRunnerEvents runnerEvt)
+                {
+                    if (runnerEvt.AgentRunnerEvent is AgentRunnerStreamingEvent streamEvt)
+                    {
+                        if (streamEvt.ModelStreamingEvent is ModelStreamingOutputTextDeltaEvent deltaTextEvent)
+                        {
+                            Console.Write(deltaTextEvent.DeltaText);
+                        }
+                    }
+                }
+            }
+            await ValueTask.CompletedTask;
+        };
+
+        Console.WriteLine("[User]:Search online for the weather in different cities and make an excel report formatted with color ");
+        Console.Write("[Assistant]: ");
+        ChatMessage report = await runtime.InvokeAsync(new ChatMessage(Code.ChatMessageRoles.User, "Search online for the weather in different cities and make an excel report formatted with color "));
         Console.WriteLine(report.Role);
     }
 }
